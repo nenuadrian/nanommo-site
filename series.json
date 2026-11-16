@@ -1,0 +1,13 @@
+{
+  "name": "nanoMMO",
+  "title": "Building nanoMMO: The Engineering Series",
+  "description": "An MMO built from scratch, with the focus on the engineering around the game.",
+  "url": "https://nanommo.nenuadrian.com/",
+  "episodes": 67,
+  "hours": 44.6,
+  "latest": {
+    "title": "MMORPG guilds in C++, from MySQL to the nameplate",
+    "url": "https://nanommo.nenuadrian.com/ep066-guilds/",
+    "thumb": "https://nanommo.nenuadrian.com/thumbs/ep066-guilds.webp"
+  }
+}
