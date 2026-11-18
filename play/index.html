@@ -1,0 +1,150 @@
+<!doctype html>
+<!--
+  nanoMMO in a browser, offline: the game's client built as WebAssembly (the web preset, episode 76),
+  running the world's rules in the page (episodes 77 and 78). scripts/play-page.sh copies the build's
+  three files next to this page from the game at `released`; this page stands in for Emscripten's own.
+-->
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Play nanoMMO in your browser</title>
+    <meta name="description" content="nanoMMO's C++ client, built as WebAssembly, playing offline in your browser: the world's rules run in the page." />
+    <link rel="icon" href="/favicon.svg" />
+    <style>
+      :root {
+        --bg: #140c0e;
+        --fg: #f3e9d2;
+        --muted: #b8a797;
+        --ember: #e8553e;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      /* The page fits the window and never scrolls, so Space (the attack) and the arrows don't move
+         it, while the game still gets the space in "correct horse". */
+      html,
+      body {
+        height: 100%;
+        overflow: hidden;
+      }
+      body {
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        background: var(--bg);
+        color: var(--fg);
+        font: 16px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif;
+      }
+      header,
+      footer {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 20px;
+        align-items: baseline;
+        padding: 12px 16px;
+      }
+      header {
+        justify-content: space-between;
+      }
+      a {
+        color: var(--fg);
+      }
+      .title {
+        font-weight: 700;
+      }
+      .keys,
+      footer {
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+      kbd {
+        border: 1px solid var(--muted);
+        border-radius: 3px;
+        padding: 0 4px;
+        font: inherit;
+        color: var(--fg);
+      }
+      /* The game keeps 16:9 and takes what the header and footer leave. */
+      main {
+        flex: 1;
+        min-height: 0;
+        display: grid;
+        place-items: center;
+      }
+      .game {
+        position: relative;
+        width: min(100%, calc((100vh - 110px) * 16 / 9));
+        aspect-ratio: 16 / 9;
+        background: #000;
+      }
+      canvas {
+        display: block;
+        width: 100% !important;
+        height: 100% !important;
+        outline: none;
+      }
+      #status {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 16px;
+        text-align: center;
+        color: var(--muted);
+      }
+      footer {
+        display: block;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a href="/">← nanoMMO</a>
+      <span class="title">Offline, in your browser</span>
+      <span class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to walk, click a skeleton and <kbd>Space</kbd> to fight, <kbd>I</kbd> for the bag</span>
+    </header>
+    <main>
+      <div class="game">
+        <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+        <div id="status">Loading…</div>
+      </div>
+    </main>
+    <footer>
+      The game's own C++ client, built as WebAssembly, running the world's rules in this page: one
+      player, nothing saved. How it's made:
+      <a href="/ep076-client-in-browser/">episodes 76</a>, <a href="/ep077-world-library/">77</a> and
+      <a href="/ep078-offline-play/">78</a>.
+    </footer>
+    <script>
+      var statusLine = document.getElementById('status');
+      var canvas = document.getElementById('canvas');
+      var Module = {
+        canvas: canvas,
+        print: function (text) {
+          console.log(text);
+        },
+        printErr: function (text) {
+          console.warn(text);
+        },
+        setStatus: function (text) {
+          statusLine.textContent = text;
+          statusLine.hidden = !text;
+        },
+        monitorRunDependencies: function (left) {
+          if (!left) Module.setStatus('');
+        },
+      };
+      Module.setStatus('Loading the game…');
+      // Keys go to the game once it has the page's attention.
+      canvas.addEventListener('click', function () {
+        canvas.focus();
+      });
+      window.addEventListener('error', function () {
+        Module.setStatus('The game stopped: the browser console says why.');
+      });
+    </script>
+    <script async src="nanommo_client.js" onerror="Module.setStatus('The game isn\'t here yet: it arrives with episode 78.')"></script>
+  </body>
+</html>

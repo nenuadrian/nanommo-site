@@ -4,11 +4,11 @@
   "description": "An MMO built from scratch, with the focus on the engineering around the game.",
   "cover": "https://nanommo.nenuadrian.com/cover.webp?v=1eb3f4a32f",
   "url": "https://nanommo.nenuadrian.com/",
-  "episodes": 67,
-  "hours": 44.6,
+  "episodes": 77,
+  "hours": 50.3,
   "latest": {
-    "title": "MMORPG guilds in C++, from MySQL to the nameplate",
-    "url": "https://nanommo.nenuadrian.com/ep066-guilds/",
-    "thumb": "https://nanommo.nenuadrian.com/thumbs/ep066-guilds.webp"
+    "title": "Weather effects and ambient sound in a C++ MMORPG",
+    "url": "https://nanommo.nenuadrian.com/ep086-fire-rain-fireflies-sound/",
+    "thumb": "https://nanommo.nenuadrian.com/thumbs/ep086-fire-rain-fireflies-sound.webp"
   }
 }
