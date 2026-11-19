@@ -4,8 +4,8 @@
   "description": "A devlog where I build an MMO from scratch in C++, with the engineering and the hard parts out in the open.",
   "cover": "https://nanommo.nenuadrian.com/cover.webp?v=1eb3f4a32f",
   "url": "https://nanommo.nenuadrian.com/",
-  "episodes": 77,
-  "hours": 50.3,
+  "episodes": 79,
+  "hours": 51.1,
   "latest": {
     "title": "Weather effects and ambient sound in a C++ MMORPG",
     "url": "https://nanommo.nenuadrian.com/ep086-fire-rain-fireflies-sound/",
