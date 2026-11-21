@@ -4,7 +4,7 @@ gtag('js', new Date());
 gtag('config', "G-35TS0K7JQH");</script><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>MMORPG gold and player trading in C++ | nanoMMO</title><meta name="description" content="Monsters in our C++ MMORPG drop gold, kept in the bag's message and saved with it, and two players trade items and gold in a window, in a simple version the server swaps all or nothing."><link rel="canonical" href="https://nanommo.nenuadrian.com/ep074-trading-and-gold/"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="alternate" type="application/rss+xml" title="nanoMMO" href="/rss.xml"><link rel="sitemap" href="/sitemap.xml"><meta name="theme-color" content="#0b0507"><meta property="og:site_name" content="nanoMMO"><meta property="og:type" content="video.episode"><meta property="og:title" content="MMORPG gold and player trading in C++"><meta property="og:description" content="Monsters in our C++ MMORPG drop gold, kept in the bag's message and saved with it, and two players trade items and gold in a window, in a simple version the server swaps all or nothing."><meta property="og:url" content="https://nanommo.nenuadrian.com/ep074-trading-and-gold/"><meta property="og:locale" content="en_GB"><meta property="og:image" content="https://nanommo.nenuadrian.com/thumbs/ep074-trading-and-gold.8f1442e9e0.jpg"><meta property="og:image:alt" content="MMORPG gold and player trading in C++ | nanoMMO Devlog"><meta name="twitter:card" content="summary_large_image"><style>:root{--bg:#0b0507;--bg-rgb:11 5 7;--surface:#150608;--surface-2:#21070b;--line:#33090f;--shadow:#4c0b14;--text:#f3e9dc;--heading:#ffffff;--prose:#e4d7cc;--muted:#b49f98;--faint:#917773;--ember:#ff5a3c;--ember-2:#ffa04a;--on-ember:#150608;--code:#4FC1FF;--font-display:"Jersey 15", var(--font-ui);--font-ui:"Inter", -apple-system, 'Helvetica Neue', sans-serif;--font-mono:"JetBrains Mono", Menlo, monospace;--font-hand:"Caveat", 'Comic Sans MS', cursive}</style><style>/* nanoMMO's site on top of aphrodite's: the pixel look's colours, and the game's own interface
    (client/theme.h): the faces it's set in, Cinzel for titles in carved gold capitals and Alegreya
    Sans for what's read, and its panels, dark, with their corners cut, a red glow under the title,
-   trimmed in brass with a thin light inside, and a gem at the top corners. The home page's quest log
+   trimmed in brass with a thin light inside, and a gem at the top right. The home page's quest log
    and Under the hood (site/components/) are made of these; the rest of the site wears them too. */
 @import url('https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;500;700&family=Cinzel:wght@700&display=swap');
 
@@ -69,11 +69,10 @@ body {
 }
 
 /* A panel: brass behind, the dark inside it a pixel in, both with their corners cut, a red glow
-   under the top, and a gem at each top corner. Clipping takes the outline round the cuts. */
+   under the top, and a gem at its top right corner. Clipping takes the outline round the cuts. */
 .hud,
 .step,
 .topic,
-.sibling,
 .card {
   position: relative;
   isolation: isolate;
@@ -85,7 +84,6 @@ body {
 .hud::before,
 .step::before,
 .topic::before,
-.sibling::before,
 .card::before {
   content: '';
   position: absolute;
@@ -100,20 +98,16 @@ body {
 .hud::after,
 .step::after,
 .topic::after,
-.sibling::after,
 .card::after {
   content: '';
   position: absolute;
   inset: 5px 5px auto;
   height: 9px;
   pointer-events: none;
-  background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M5 0.6 9.4 5 5 9.4 0.6 5Z' fill='%23ff5a3c' stroke='%23ffd34d' stroke-width='1.1'/%3E%3C/svg%3E") left top / 9px 9px no-repeat,
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M5 0.6 9.4 5 5 9.4 0.6 5Z' fill='%23ff5a3c' stroke='%23ffd34d' stroke-width='1.1'/%3E%3C/svg%3E") right top / 9px 9px no-repeat;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M5 0.6 9.4 5 5 9.4 0.6 5Z' fill='%23ff5a3c' stroke='%23ffd34d' stroke-width='1.1'/%3E%3C/svg%3E") right top / 9px 9px no-repeat;
 }
 a.hud:hover,
 .topic:hover,
-.sibling:hover,
 .card:hover {
   background: var(--gold-dark) !important;
 }
