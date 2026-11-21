@@ -4,7 +4,7 @@ gtag('js', new Date());
 gtag('config', "G-35TS0K7JQH");</script><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Episodes | nanoMMO</title><meta name="description" content="All 80 episodes of nanoMMO, the latest first or in episode order, and by topic. A devlog where I build an MMO from scratch in C++, with the engineering and the hard parts out in the open."><link rel="canonical" href="https://nanommo.nenuadrian.com/episodes/"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="alternate" type="application/rss+xml" title="nanoMMO" href="/rss.xml"><link rel="sitemap" href="/sitemap.xml"><meta name="theme-color" content="#0b0507"><meta property="og:site_name" content="nanoMMO"><meta property="og:type" content="website"><meta property="og:title" content="Episodes"><meta property="og:description" content="All 80 episodes of nanoMMO, the latest first or in episode order, and by topic. A devlog where I build an MMO from scratch in C++, with the engineering and the hard parts out in the open."><meta property="og:url" content="https://nanommo.nenuadrian.com/episodes/"><meta property="og:locale" content="en_GB"><meta name="twitter:card" content="summary"><style>:root{--bg:#0b0507;--bg-rgb:11 5 7;--surface:#150608;--surface-2:#21070b;--line:#33090f;--shadow:#4c0b14;--text:#f3e9dc;--heading:#ffffff;--prose:#e4d7cc;--muted:#b49f98;--faint:#917773;--ember:#ff5a3c;--ember-2:#ffa04a;--on-ember:#150608;--code:#4FC1FF;--font-display:"Jersey 15", var(--font-ui);--font-ui:"Inter", -apple-system, 'Helvetica Neue', sans-serif;--font-mono:"JetBrains Mono", Menlo, monospace;--font-hand:"Caveat", 'Comic Sans MS', cursive}</style><style>/* nanoMMO's site on top of aphrodite's: the pixel look's colours, and the game's own interface
    (client/theme.h): the faces it's set in, Cinzel for titles in carved gold capitals and Alegreya
    Sans for what's read, and its panels, dark, with their corners cut, a red glow under the title,
-   trimmed in brass with a thin light inside, and a gem at the top right. The home page's quest log
+   trimmed in brass with a thin light inside. The home page's quest log
    and Under the hood (site/components/) are made of these; the rest of the site wears them too. */
 @import url('https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;500;700&family=Cinzel:wght@700&display=swap');
 
@@ -69,7 +69,8 @@ body {
 }
 
 /* A panel: brass behind, the dark inside it a pixel in, both with their corners cut, a red glow
-   under the top, and a gem at its top right corner. Clipping takes the outline round the cuts. */
+   under the top, a fine grain, and a bevel: light along the top inside, shade along the bottom.
+   Clipping takes the outline round the cuts. */
 .hud,
 .step,
 .topic,
@@ -91,20 +92,13 @@ body {
   z-index: -1;
   clip-path: polygon(calc(var(--cut) - 0.5px) 0, calc(100% - var(--cut) + 0.5px) 0, 100% calc(var(--cut) - 0.5px), 100% calc(100% - var(--cut) + 0.5px), calc(100% - var(--cut) + 0.5px) 100%, calc(var(--cut) - 0.5px) 100%, 0 calc(100% - var(--cut) + 0.5px), 0 calc(var(--cut) - 0.5px));
   background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.92 0 0 0 0 0.85 0 0 0 0.055 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
     radial-gradient(ellipse 70% 46px at 50% 0, rgb(148 18 31 / 0.5), transparent 100%),
     linear-gradient(180deg, var(--coal), var(--night));
-  box-shadow: inset 0 0 0 1px rgb(255 243 196 / 0.07);
-}
-.hud::after,
-.step::after,
-.topic::after,
-.card::after {
-  content: '';
-  position: absolute;
-  inset: 5px 5px auto;
-  height: 9px;
-  pointer-events: none;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M5 0.6 9.4 5 5 9.4 0.6 5Z' fill='%23ff5a3c' stroke='%23ffd34d' stroke-width='1.1'/%3E%3C/svg%3E") right top / 9px 9px no-repeat;
+  box-shadow:
+    inset 0 0 0 1px rgb(255 243 196 / 0.07),
+    inset 0 1px 0 1px rgb(255 243 196 / 0.08),
+    inset 0 -24px 36px -12px rgb(0 0 0 / 0.45);
 }
 a.hud:hover,
 .topic:hover,
@@ -114,10 +108,6 @@ a.hud:hover,
 .card {
   box-shadow: none !important;
   z-index: 0;
-}
-/* A card's thumbnail has the level in its corner, where the gems would go. */
-.card::after {
-  display: none;
 }
 .card .thumb {
   margin: 1px 1px 0;
@@ -129,12 +119,13 @@ section[aria-labelledby='start-here'] {
   display: none;
 }
 
-/* The topics three to a row, two on a narrower screen (aphrodite's phone layout keeps its two). */
-.topics {
+/* The home page's topics three to a row, two on a narrower screen (aphrodite's phone layout keeps
+   its two); the episodes page's list of topics is left as it is. */
+#by-topic ~ .topics {
   grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
 }
 @media (max-width: 960px) {
-  .topics {
+  #by-topic ~ .topics {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
@@ -181,6 +172,126 @@ a.lv:hover {
   background: var(--coal);
   border-color: var(--brass);
 }
+
+/* The page behind it all: a warm near-black, a fine grain, a little of the fire's red at the top,
+   and the edges going darker, as the game's screen does. Fixed, so it stays put as the page moves. */
+body {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.9 0 0 0 0 0.82 0 0 0 0.045 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 120% 70% at 50% -10%, rgb(148 18 31 / 0.16), transparent 60%),
+    radial-gradient(ellipse 140% 100% at 50% 50%, transparent 55%, rgb(0 0 0 / 0.55) 100%),
+    #0c0608;
+  background-attachment: fixed;
+}
+
+/* Each section the same: its title centred, the line with a diamond under it, and the same room
+   above it. */
+.block {
+  padding-block: clamp(64px, 8vw, 104px) 0 !important;
+}
+.section-title {
+  display: block;
+  text-align: center;
+  margin: 0 0 32px !important;
+}
+.section-title::after {
+  content: '';
+  display: block;
+  width: min(760px, 100%);
+  height: 11px;
+  margin: 14px auto 0;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 0.8 11.2 6 6 11.2 0.8 6Z' fill='%23ffd34d' stroke='%230b0507' stroke-width='1'/%3E%3C/svg%3E") center / 11px 11px no-repeat,
+    linear-gradient(90deg, transparent, var(--brass) 20%, var(--gold-dark) 50%, var(--brass) 80%, transparent) center / 100% 1px no-repeat;
+}
+.head {
+  flex-direction: column;
+  align-items: center !important;
+  gap: 0 !important;
+}
+.head .section-title {
+  width: 100%;
+  margin-bottom: 14px !important;
+}
+.head .all {
+  margin-bottom: 26px;
+}
+
+/* Motion, kept small: cards and topics rise a little with a gold glow when pointed at, the quest
+   log's rows slide, its arcs open smoothly, the gems on its trunk catch the light now and then, and
+   sections rise into place as they scroll in. None of it for anyone who asks for less motion. */
+:root {
+  interpolate-size: allow-keywords;
+}
+.cards > li,
+#by-topic ~ .topics > li {
+  transition:
+    transform 180ms ease,
+    filter 180ms ease;
+}
+.cards > li:hover,
+#by-topic ~ .topics > li:hover {
+  transform: translateY(-4px);
+  filter: drop-shadow(0 10px 18px rgb(255 160 74 / 0.16));
+}
+.quests details::details-content {
+  block-size: 0;
+  overflow: hidden;
+  transition:
+    block-size 320ms ease,
+    content-visibility 320ms allow-discrete;
+}
+.quests details[open]::details-content {
+  block-size: auto;
+}
+@keyframes glint {
+  0%,
+  90%,
+  100% {
+    filter: brightness(1);
+  }
+  94% {
+    filter: brightness(1.7) drop-shadow(0 0 6px rgb(255 211 77 / 0.9));
+  }
+}
+.quests .arc::before {
+  animation: glint 7s ease-in-out infinite;
+}
+.quests .arc:nth-child(2n)::before {
+  animation-delay: 2.3s;
+}
+.quests .arc:nth-child(3n)::before {
+  animation-delay: 4.6s;
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+}
+@supports (animation-timeline: view()) {
+  .quests .arc,
+  .choices .panel,
+  .cards > li,
+  #by-topic ~ .topics > li {
+    animation: rise linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 35%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cards > li,
+  #by-topic ~ .topics > li,
+  .quests .arc,
+  .quests .arc::before,
+  .choices .panel,
+  .quests details::details-content {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
 </style><style>@layer aphrodite{.hero[data-astro-cid-2mpv4rpn]{padding-block:140px 64px}h1[data-astro-cid-2mpv4rpn]{margin:0;font-size:clamp(3rem,10vw,5.5rem)}}
 </style><link rel="stylesheet" href="/_astro/Base.DV1BDJVb.css"><style>@layer aphrodite{.card[data-astro-cid-p5rwydxy]{height:100%;color:inherit;background:var(--surface);border:1px solid var(--line);box-shadow:6px 6px 0 var(--surface-2);flex-direction:column;text-decoration:none;transition:transform .12s,border-color .12s;display:flex}.card[data-astro-cid-p5rwydxy]:hover{color:inherit;border-color:var(--ember);transform:translate(-2px,-2px)}.thumb[data-astro-cid-p5rwydxy]{aspect-ratio:16/9;background:#000;overflow:hidden}.thumb[data-astro-cid-p5rwydxy] img[data-astro-cid-p5rwydxy]{object-fit:cover;width:100%;height:100%;display:block}.placeholder[data-astro-cid-p5rwydxy]{text-align:center;background:var(--bg) var(--field) center / cover;place-items:center;height:100%;padding:16px;display:grid}.placeholder[data-astro-cid-p5rwydxy] span[data-astro-cid-p5rwydxy]{font-size:clamp(1.8rem,4vw,2.4rem)}.body[data-astro-cid-p5rwydxy]{flex-direction:column;flex:1;gap:8px;padding:18px 20px 20px;display:flex}.tags[data-astro-cid-p5rwydxy]>[data-astro-cid-p5rwydxy]{border-width:2px;font-size:.95rem}h3[data-astro-cid-p5rwydxy]{margin:4px 0 0;font-size:1.2rem;font-weight:700}.sub[data-astro-cid-p5rwydxy]{color:var(--muted);margin:0;font-size:.95rem}.meta[data-astro-cid-p5rwydxy]{color:var(--faint);margin:auto 0 0;padding-top:6px;font-size:.875rem}}
 @layer aphrodite{main[data-astro-cid-6m2tr5w5]{padding-top:40px;scroll-margin-top:0}.with-topics[data-astro-cid-6m2tr5w5]{grid-template:"title topics""grid topics"1fr/minmax(0,1fr) 220px;column-gap:48px;display:grid}.with-topics[data-astro-cid-6m2tr5w5]>.list-head[data-astro-cid-6m2tr5w5]{grid-area:title}.list-head[data-astro-cid-6m2tr5w5]{flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px 24px;margin-bottom:16px;display:flex}.count[data-astro-cid-6m2tr5w5]{color:var(--muted);font-family:var(--font-mono);margin:0;font-size:.95rem}.order[data-astro-cid-6m2tr5w5]{display:flex}.order[data-astro-cid-6m2tr5w5][hidden]{display:none}.order[data-astro-cid-6m2tr5w5] button[data-astro-cid-6m2tr5w5]{font:inherit;color:inherit;background:var(--surface);border:2px solid var(--line);cursor:pointer;padding:6px 12px;font-size:.95rem}.order[data-astro-cid-6m2tr5w5] button[data-astro-cid-6m2tr5w5]+button[data-astro-cid-6m2tr5w5]{margin-left:-2px}.order[data-astro-cid-6m2tr5w5] button[data-astro-cid-6m2tr5w5]:hover{border-color:var(--ember);position:relative}.order[data-astro-cid-6m2tr5w5] button[data-astro-cid-6m2tr5w5][aria-pressed=true]{color:var(--on-ember);background:var(--ember);border-color:var(--ember);position:relative}.with-topics[data-astro-cid-6m2tr5w5]>.grid[data-astro-cid-6m2tr5w5]{grid-area:grid}aside[data-astro-cid-6m2tr5w5]{top:calc(var(--bar-h,0px) + 24px);grid-area:topics;align-self:start;transition:top .2s;position:sticky}html:has(.bar.away:not(:focus-within)) aside[data-astro-cid-6m2tr5w5]{top:24px}@media (prefers-reduced-motion:reduce){aside[data-astro-cid-6m2tr5w5]{transition:none}}.topics[data-astro-cid-6m2tr5w5]{flex-direction:column;gap:8px;margin:0;padding:0;list-style:none;display:flex}.topics[data-astro-cid-6m2tr5w5] a[data-astro-cid-6m2tr5w5]{color:inherit;background:var(--surface);border:2px solid var(--line);justify-content:space-between;align-items:baseline;gap:12px;padding:8px 12px;text-decoration:none;display:flex}.topics[data-astro-cid-6m2tr5w5] a[data-astro-cid-6m2tr5w5]:hover{color:inherit;border-color:var(--ember)}.topics[data-astro-cid-6m2tr5w5] a[data-astro-cid-6m2tr5w5][aria-current]{color:var(--on-ember);background:var(--ember);border-color:var(--ember)}.n[data-astro-cid-6m2tr5w5]{font-family:var(--font-mono);opacity:.75;font-size:.85rem}@media (width<=900px){.with-topics[data-astro-cid-6m2tr5w5]{grid-template-rows:none;grid-template-columns:minmax(0,1fr);grid-template-areas:"title""topics""grid"}aside[data-astro-cid-6m2tr5w5]{margin-bottom:24px;position:static}.topics-title[data-astro-cid-6m2tr5w5]{clip-path:inset(50%);white-space:nowrap;width:1px;height:1px;position:absolute;overflow:hidden}.topics[data-astro-cid-6m2tr5w5]{flex-flow:wrap}.topics[data-astro-cid-6m2tr5w5] a[data-astro-cid-6m2tr5w5]{padding:6px 10px;font-size:.95rem}}.grid[data-astro-cid-6m2tr5w5]{grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:28px;margin:0;padding:0;list-style:none;display:grid}.grid[data-astro-cid-6m2tr5w5]>[data-astro-cid-6m2tr5w5][hidden]{display:none}.empty[data-astro-cid-6m2tr5w5]{color:var(--muted)}}

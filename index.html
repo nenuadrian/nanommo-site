@@ -4,7 +4,7 @@ gtag('js', new Date());
 gtag('config', "G-35TS0K7JQH");</script><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>nanoMMO | Building nanoMMO: The Engineering Series</title><meta name="description" content="A devlog where I build an MMO from scratch in C++, with features I'd like to see exist, even if some might be impractical for most games, such as players creating their own skills. It's a learning journey, with the software engineering and the hard parts out in the open."><link rel="canonical" href="https://nanommo.nenuadrian.com/"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="alternate" type="application/rss+xml" title="nanoMMO" href="/rss.xml"><link rel="sitemap" href="/sitemap.xml"><meta name="theme-color" content="#0b0507"><meta property="og:site_name" content="nanoMMO"><meta property="og:type" content="website"><meta property="og:title" content="nanoMMO | Building nanoMMO: The Engineering Series"><meta property="og:description" content="A devlog where I build an MMO from scratch in C++, with features I'd like to see exist, even if some might be impractical for most games, such as players creating their own skills. It's a learning journey, with the software engineering and the hard parts out in the open."><meta property="og:url" content="https://nanommo.nenuadrian.com/"><meta property="og:locale" content="en_GB"><meta property="og:image" content="https://nanommo.nenuadrian.com/cover.1eb3f4a32f.jpg"><meta property="og:image:alt" content="Building nanoMMO: The Engineering Series"><meta name="twitter:card" content="summary_large_image"><style>:root{--bg:#0b0507;--bg-rgb:11 5 7;--surface:#150608;--surface-2:#21070b;--line:#33090f;--shadow:#4c0b14;--text:#f3e9dc;--heading:#ffffff;--prose:#e4d7cc;--muted:#b49f98;--faint:#917773;--ember:#ff5a3c;--ember-2:#ffa04a;--on-ember:#150608;--code:#4FC1FF;--font-display:"Jersey 15", var(--font-ui);--font-ui:"Inter", -apple-system, 'Helvetica Neue', sans-serif;--font-mono:"JetBrains Mono", Menlo, monospace;--font-hand:"Caveat", 'Comic Sans MS', cursive}</style><style>/* nanoMMO's site on top of aphrodite's: the pixel look's colours, and the game's own interface
    (client/theme.h): the faces it's set in, Cinzel for titles in carved gold capitals and Alegreya
    Sans for what's read, and its panels, dark, with their corners cut, a red glow under the title,
-   trimmed in brass with a thin light inside, and a gem at the top right. The home page's quest log
+   trimmed in brass with a thin light inside. The home page's quest log
    and Under the hood (site/components/) are made of these; the rest of the site wears them too. */
 @import url('https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;500;700&family=Cinzel:wght@700&display=swap');
 
@@ -69,7 +69,8 @@ body {
 }
 
 /* A panel: brass behind, the dark inside it a pixel in, both with their corners cut, a red glow
-   under the top, and a gem at its top right corner. Clipping takes the outline round the cuts. */
+   under the top, a fine grain, and a bevel: light along the top inside, shade along the bottom.
+   Clipping takes the outline round the cuts. */
 .hud,
 .step,
 .topic,
@@ -91,20 +92,13 @@ body {
   z-index: -1;
   clip-path: polygon(calc(var(--cut) - 0.5px) 0, calc(100% - var(--cut) + 0.5px) 0, 100% calc(var(--cut) - 0.5px), 100% calc(100% - var(--cut) + 0.5px), calc(100% - var(--cut) + 0.5px) 100%, calc(var(--cut) - 0.5px) 100%, 0 calc(100% - var(--cut) + 0.5px), 0 calc(var(--cut) - 0.5px));
   background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.92 0 0 0 0 0.85 0 0 0 0.055 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
     radial-gradient(ellipse 70% 46px at 50% 0, rgb(148 18 31 / 0.5), transparent 100%),
     linear-gradient(180deg, var(--coal), var(--night));
-  box-shadow: inset 0 0 0 1px rgb(255 243 196 / 0.07);
-}
-.hud::after,
-.step::after,
-.topic::after,
-.card::after {
-  content: '';
-  position: absolute;
-  inset: 5px 5px auto;
-  height: 9px;
-  pointer-events: none;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M5 0.6 9.4 5 5 9.4 0.6 5Z' fill='%23ff5a3c' stroke='%23ffd34d' stroke-width='1.1'/%3E%3C/svg%3E") right top / 9px 9px no-repeat;
+  box-shadow:
+    inset 0 0 0 1px rgb(255 243 196 / 0.07),
+    inset 0 1px 0 1px rgb(255 243 196 / 0.08),
+    inset 0 -24px 36px -12px rgb(0 0 0 / 0.45);
 }
 a.hud:hover,
 .topic:hover,
@@ -114,10 +108,6 @@ a.hud:hover,
 .card {
   box-shadow: none !important;
   z-index: 0;
-}
-/* A card's thumbnail has the level in its corner, where the gems would go. */
-.card::after {
-  display: none;
 }
 .card .thumb {
   margin: 1px 1px 0;
@@ -129,12 +119,13 @@ section[aria-labelledby='start-here'] {
   display: none;
 }
 
-/* The topics three to a row, two on a narrower screen (aphrodite's phone layout keeps its two). */
-.topics {
+/* The home page's topics three to a row, two on a narrower screen (aphrodite's phone layout keeps
+   its two); the episodes page's list of topics is left as it is. */
+#by-topic ~ .topics {
   grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
 }
 @media (max-width: 960px) {
-  .topics {
+  #by-topic ~ .topics {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
@@ -181,10 +172,130 @@ a.lv:hover {
   background: var(--coal);
   border-color: var(--brass);
 }
+
+/* The page behind it all: a warm near-black, a fine grain, a little of the fire's red at the top,
+   and the edges going darker, as the game's screen does. Fixed, so it stays put as the page moves. */
+body {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.9 0 0 0 0 0.82 0 0 0 0.045 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 120% 70% at 50% -10%, rgb(148 18 31 / 0.16), transparent 60%),
+    radial-gradient(ellipse 140% 100% at 50% 50%, transparent 55%, rgb(0 0 0 / 0.55) 100%),
+    #0c0608;
+  background-attachment: fixed;
+}
+
+/* Each section the same: its title centred, the line with a diamond under it, and the same room
+   above it. */
+.block {
+  padding-block: clamp(64px, 8vw, 104px) 0 !important;
+}
+.section-title {
+  display: block;
+  text-align: center;
+  margin: 0 0 32px !important;
+}
+.section-title::after {
+  content: '';
+  display: block;
+  width: min(760px, 100%);
+  height: 11px;
+  margin: 14px auto 0;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 0.8 11.2 6 6 11.2 0.8 6Z' fill='%23ffd34d' stroke='%230b0507' stroke-width='1'/%3E%3C/svg%3E") center / 11px 11px no-repeat,
+    linear-gradient(90deg, transparent, var(--brass) 20%, var(--gold-dark) 50%, var(--brass) 80%, transparent) center / 100% 1px no-repeat;
+}
+.head {
+  flex-direction: column;
+  align-items: center !important;
+  gap: 0 !important;
+}
+.head .section-title {
+  width: 100%;
+  margin-bottom: 14px !important;
+}
+.head .all {
+  margin-bottom: 26px;
+}
+
+/* Motion, kept small: cards and topics rise a little with a gold glow when pointed at, the quest
+   log's rows slide, its arcs open smoothly, the gems on its trunk catch the light now and then, and
+   sections rise into place as they scroll in. None of it for anyone who asks for less motion. */
+:root {
+  interpolate-size: allow-keywords;
+}
+.cards > li,
+#by-topic ~ .topics > li {
+  transition:
+    transform 180ms ease,
+    filter 180ms ease;
+}
+.cards > li:hover,
+#by-topic ~ .topics > li:hover {
+  transform: translateY(-4px);
+  filter: drop-shadow(0 10px 18px rgb(255 160 74 / 0.16));
+}
+.quests details::details-content {
+  block-size: 0;
+  overflow: hidden;
+  transition:
+    block-size 320ms ease,
+    content-visibility 320ms allow-discrete;
+}
+.quests details[open]::details-content {
+  block-size: auto;
+}
+@keyframes glint {
+  0%,
+  90%,
+  100% {
+    filter: brightness(1);
+  }
+  94% {
+    filter: brightness(1.7) drop-shadow(0 0 6px rgb(255 211 77 / 0.9));
+  }
+}
+.quests .arc::before {
+  animation: glint 7s ease-in-out infinite;
+}
+.quests .arc:nth-child(2n)::before {
+  animation-delay: 2.3s;
+}
+.quests .arc:nth-child(3n)::before {
+  animation-delay: 4.6s;
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+}
+@supports (animation-timeline: view()) {
+  .quests .arc,
+  .choices .panel,
+  .cards > li,
+  #by-topic ~ .topics > li {
+    animation: rise linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 35%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cards > li,
+  #by-topic ~ .topics > li,
+  .quests .arc,
+  .quests .arc::before,
+  .choices .panel,
+  .quests details::details-content {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
 </style><script>
     if (location.hash === '#episodes' || /[?&](topic|order)=/.test(location.search)) location.replace('/episodes/' + location.search);
   </script><script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"nanoMMO","alternateName":"Building nanoMMO: The Engineering Series","url":"https://nanommo.nenuadrian.com/","description":"A devlog where I build an MMO from scratch in C++, with features I'd like to see exist, even if some might be impractical for most games, such as players creating their own skills. It's a learning journey, with the software engineering and the hard parts out in the open.","inLanguage":"en-GB"}</script><link rel="stylesheet" href="/_astro/Base.DV1BDJVb.css"><style>@layer aphrodite{.card[data-astro-cid-p5rwydxy]{height:100%;color:inherit;background:var(--surface);border:1px solid var(--line);box-shadow:6px 6px 0 var(--surface-2);flex-direction:column;text-decoration:none;transition:transform .12s,border-color .12s;display:flex}.card[data-astro-cid-p5rwydxy]:hover{color:inherit;border-color:var(--ember);transform:translate(-2px,-2px)}.thumb[data-astro-cid-p5rwydxy]{aspect-ratio:16/9;background:#000;overflow:hidden}.thumb[data-astro-cid-p5rwydxy] img[data-astro-cid-p5rwydxy]{object-fit:cover;width:100%;height:100%;display:block}.placeholder[data-astro-cid-p5rwydxy]{text-align:center;background:var(--bg) var(--field) center / cover;place-items:center;height:100%;padding:16px;display:grid}.placeholder[data-astro-cid-p5rwydxy] span[data-astro-cid-p5rwydxy]{font-size:clamp(1.8rem,4vw,2.4rem)}.body[data-astro-cid-p5rwydxy]{flex-direction:column;flex:1;gap:8px;padding:18px 20px 20px;display:flex}.tags[data-astro-cid-p5rwydxy]>[data-astro-cid-p5rwydxy]{border-width:2px;font-size:.95rem}h3[data-astro-cid-p5rwydxy]{margin:4px 0 0;font-size:1.2rem;font-weight:700}.sub[data-astro-cid-p5rwydxy]{color:var(--muted);margin:0;font-size:.95rem}.meta[data-astro-cid-p5rwydxy]{color:var(--faint);margin:auto 0 0;padding-top:6px;font-size:.875rem}}
-</style><link rel="stylesheet" href="/_astro/index.C5FKItN_.css"></head><body data-palette="{&quot;field&quot;:[&quot;#0b0507&quot;,&quot;#150608&quot;,&quot;#21070b&quot;,&quot;#33090f&quot;,&quot;#4c0b14&quot;,&quot;#6c0e19&quot;,&quot;#94121f&quot;,&quot;#c41d29&quot;],&quot;ember&quot;:[&quot;#ff5a3c&quot;,&quot;#ffa04a&quot;]}" data-astro-cid-hkbrpulz><header class="bar" data-astro-cid-hkbrpulz><div class="wrap bar-inner" data-astro-cid-hkbrpulz><a class="brand" href="/" data-astro-cid-hkbrpulz>nanoMMO</a><div class="search" data-search data-astro-cid-hkbrpulz><form class="search-form" id="site-search" role="search" action="/" data-astro-cid-hkbrpulz><svg class="glass" viewBox="0 0 8 8" aria-hidden="true" shape-rendering="crispEdges" data-astro-cid-hkbrpulz><path d="M2 0h3v1h-3zM1 1h1v1h-1zM5 1h1v1h-1zM0 2h1v3h-1zM6 2h1v3h-1zM1 5h1v1h-1zM5 5h1v1h-1zM2 6h3v1h-3zM6 6h1v1h-1zM7 7h1v1h-1z" data-astro-cid-hkbrpulz></path></svg><input type="search" name="q" placeholder="Search episodes" aria-label="Search episodes" autocomplete="off" spellcheck="false" enterkeyhint="go" role="combobox" aria-expanded="false" aria-controls="search-results" aria-autocomplete="list" data-astro-cid-hkbrpulz><button type="button" class="search-close" aria-label="Close the search" data-astro-cid-hkbrpulz><svg viewBox="0 0 8 8" aria-hidden="true" shape-rendering="crispEdges"><path d="M1 1h1v1h-1zM2 2h1v1h-1zM3 3h2v2h-2zM5 2h1v1h-1zM6 1h1v1h-1zM2 5h1v1h-1zM1 6h1v1h-1zM5 5h1v1h-1zM6 6h1v1h-1z"></path></svg></button></form><ul class="results" id="search-results" role="listbox" aria-label="Episodes" hidden data-astro-cid-hkbrpulz></ul></div><button type="button" class="search-open" aria-label="Search" aria-expanded="false" aria-controls="site-search" data-astro-cid-hkbrpulz><svg class="glass" viewBox="0 0 8 8" aria-hidden="true" shape-rendering="crispEdges" data-astro-cid-hkbrpulz><path d="M2 0h3v1h-3zM1 1h1v1h-1zM5 1h1v1h-1zM0 2h1v3h-1zM6 2h1v3h-1zM1 5h1v1h-1zM5 5h1v1h-1zM2 6h3v1h-3zM6 6h1v1h-1zM7 7h1v1h-1z" data-astro-cid-hkbrpulz></path></svg></button><button type="button" class="menu" aria-expanded="false" aria-controls="site-nav" aria-label="Menu" data-astro-cid-hkbrpulz><svg class="open-icon" viewBox="0 0 8 7" aria-hidden="true" shape-rendering="crispEdges" data-astro-cid-hkbrpulz><path d="M0 0h8v1h-8zM0 3h8v1h-8zM0 6h8v1h-8z" data-astro-cid-hkbrpulz></path></svg><svg viewBox="0 0 8 8" aria-hidden="true" shape-rendering="crispEdges"><path d="M1 1h1v1h-1zM2 2h1v1h-1zM3 3h2v2h-2zM5 2h1v1h-1zM6 1h1v1h-1zM2 5h1v1h-1zM1 6h1v1h-1zM5 5h1v1h-1zM6 6h1v1h-1z"></path></svg></button><nav id="site-nav" aria-label="Site" data-astro-cid-hkbrpulz><a href="/" aria-current="page" data-astro-cid-hkbrpulz>Home</a><a class="episodes" href="/episodes/" data-astro-cid-hkbrpulz>Episodes</a><a href="/start/" data-astro-cid-hkbrpulz>Get started</a><a href="/about/" data-astro-cid-hkbrpulz>About</a><a href="https://www.youtube.com/@adrian-m-nenu" data-astro-cid-hkbrpulz>YouTube</a><a href="https://github.com/nenuadrian/nanoMMO" data-astro-cid-hkbrpulz>Code</a><a href="https://nenuadrian.github.io/nanoMMO/" data-astro-cid-hkbrpulz>Docs</a><a href="https://github.com/nenuadrian/nanoMMO/tree/main/docs/decisions" data-astro-cid-hkbrpulz>Decisions</a></nav></div></header><header class="hero field" style="--field: url(/field/home.svg)" data-seed="0" data-calm="left" data-astro-cid-3h6ed3sy><div class="wrap split" data-astro-cid-3h6ed3sy><div class="text" data-astro-cid-3h6ed3sy><h1 class="display" data-astro-cid-3h6ed3sy>nanoMMO</h1><p class="hand" data-astro-cid-3h6ed3sy>The MMO I&#39;d like to see exist, built from scratch in C++, with the engineering and the hard parts out in the open.</p><div class="intro" data-astro-cid-3h6ed3sy><p>nanoMMO is a devlog where I build an MMO from scratch in C++, with features I'd like to see exist, even if some might be impractical for most games, such as players creating their own skills. It's a learning journey, with the software engineering and the hard parts out in the open, and not always about the gameplay.</p>
+</style><link rel="stylesheet" href="/_astro/index.DlLInNrt.css"></head><body data-palette="{&quot;field&quot;:[&quot;#0b0507&quot;,&quot;#150608&quot;,&quot;#21070b&quot;,&quot;#33090f&quot;,&quot;#4c0b14&quot;,&quot;#6c0e19&quot;,&quot;#94121f&quot;,&quot;#c41d29&quot;],&quot;ember&quot;:[&quot;#ff5a3c&quot;,&quot;#ffa04a&quot;]}" data-astro-cid-hkbrpulz><header class="bar" data-astro-cid-hkbrpulz><div class="wrap bar-inner" data-astro-cid-hkbrpulz><a class="brand" href="/" data-astro-cid-hkbrpulz>nanoMMO</a><div class="search" data-search data-astro-cid-hkbrpulz><form class="search-form" id="site-search" role="search" action="/" data-astro-cid-hkbrpulz><svg class="glass" viewBox="0 0 8 8" aria-hidden="true" shape-rendering="crispEdges" data-astro-cid-hkbrpulz><path d="M2 0h3v1h-3zM1 1h1v1h-1zM5 1h1v1h-1zM0 2h1v3h-1zM6 2h1v3h-1zM1 5h1v1h-1zM5 5h1v1h-1zM2 6h3v1h-3zM6 6h1v1h-1zM7 7h1v1h-1z" data-astro-cid-hkbrpulz></path></svg><input type="search" name="q" placeholder="Search episodes" aria-label="Search episodes" autocomplete="off" spellcheck="false" enterkeyhint="go" role="combobox" aria-expanded="false" aria-controls="search-results" aria-autocomplete="list" data-astro-cid-hkbrpulz><button type="button" class="search-close" aria-label="Close the search" data-astro-cid-hkbrpulz><svg viewBox="0 0 8 8" aria-hidden="true" shape-rendering="crispEdges"><path d="M1 1h1v1h-1zM2 2h1v1h-1zM3 3h2v2h-2zM5 2h1v1h-1zM6 1h1v1h-1zM2 5h1v1h-1zM1 6h1v1h-1zM5 5h1v1h-1zM6 6h1v1h-1z"></path></svg></button></form><ul class="results" id="search-results" role="listbox" aria-label="Episodes" hidden data-astro-cid-hkbrpulz></ul></div><button type="button" class="search-open" aria-label="Search" aria-expanded="false" aria-controls="site-search" data-astro-cid-hkbrpulz><svg class="glass" viewBox="0 0 8 8" aria-hidden="true" shape-rendering="crispEdges" data-astro-cid-hkbrpulz><path d="M2 0h3v1h-3zM1 1h1v1h-1zM5 1h1v1h-1zM0 2h1v3h-1zM6 2h1v3h-1zM1 5h1v1h-1zM5 5h1v1h-1zM2 6h3v1h-3zM6 6h1v1h-1zM7 7h1v1h-1z" data-astro-cid-hkbrpulz></path></svg></button><button type="button" class="menu" aria-expanded="false" aria-controls="site-nav" aria-label="Menu" data-astro-cid-hkbrpulz><svg class="open-icon" viewBox="0 0 8 7" aria-hidden="true" shape-rendering="crispEdges" data-astro-cid-hkbrpulz><path d="M0 0h8v1h-8zM0 3h8v1h-8zM0 6h8v1h-8z" data-astro-cid-hkbrpulz></path></svg><svg viewBox="0 0 8 8" aria-hidden="true" shape-rendering="crispEdges"><path d="M1 1h1v1h-1zM2 2h1v1h-1zM3 3h2v2h-2zM5 2h1v1h-1zM6 1h1v1h-1zM2 5h1v1h-1zM1 6h1v1h-1zM5 5h1v1h-1zM6 6h1v1h-1z"></path></svg></button><nav id="site-nav" aria-label="Site" data-astro-cid-hkbrpulz><a href="/" aria-current="page" data-astro-cid-hkbrpulz>Home</a><a class="episodes" href="/episodes/" data-astro-cid-hkbrpulz>Episodes</a><a href="/start/" data-astro-cid-hkbrpulz>Get started</a><a href="/about/" data-astro-cid-hkbrpulz>About</a><a href="https://www.youtube.com/@adrian-m-nenu" data-astro-cid-hkbrpulz>YouTube</a><a href="https://github.com/nenuadrian/nanoMMO" data-astro-cid-hkbrpulz>Code</a><a href="https://nenuadrian.github.io/nanoMMO/" data-astro-cid-hkbrpulz>Docs</a><a href="https://github.com/nenuadrian/nanoMMO/tree/main/docs/decisions" data-astro-cid-hkbrpulz>Decisions</a></nav></div></header><header class="hero field" style="--field: url(/field/home.svg); --art: url(/art/fire-rain-c5d54690.webp)" data-seed="0" data-calm="left" data-astro-cid-3h6ed3sy><div class="wrap split" data-astro-cid-3h6ed3sy><div class="text" data-astro-cid-3h6ed3sy><h1 class="display" data-astro-cid-3h6ed3sy>nanoMMO</h1><p class="hand" data-astro-cid-3h6ed3sy>The MMO I&#39;d like to see exist, built from scratch in C++, with the engineering and the hard parts out in the open.</p><div class="intro" data-astro-cid-3h6ed3sy><p>nanoMMO is a devlog where I build an MMO from scratch in C++, with features I'd like to see exist, even if some might be impractical for most games, such as players creating their own skills. It's a learning journey, with the software engineering and the hard parts out in the open, and not always about the gameplay.</p>
 <p>The name is a working title. It takes after <a href="https://github.com/karpathy/nanochat">nanochat</a>, a repository by Andrej Karpathy, with code that's kept minimal and easy to hack on. That's what I'm going for here as well: a codebase that covers an MMO from one end to the other, which you can read, run yourself, and play with.</p>
 <p>The episodes are on <a href="https://www.youtube.com/@adrian-m-nenu">YouTube</a>. The game's code is <a href="https://github.com/nenuadrian/nanoMMO">on GitHub</a>, tagged at each step of each episode, so you can follow along. Its API docs are <a href="https://nenuadrian.github.io/nanoMMO/">here</a>, and the reasons it's built the way it is are in its <a href="https://github.com/nenuadrian/nanoMMO/tree/main/docs/decisions">decision records</a>.</p>
 </div></div><div class="side" data-astro-cid-3h6ed3sy><section class="slides" data-slides aria-roledescription="carousel" aria-label="Recent episodes" data-astro-cid-assby6o5><div class="track" data-track data-astro-cid-assby6o5><div class="slide" role="group" aria-roledescription="slide" aria-label="1 of 6" data-id="GqI4_UotXac" data-title="nanoMMO, an MMORPG built from scratch in C++ (trailer)" data-astro-cid-assby6o5><button type="button" class="start" aria-label="Play nanoMMO, an MMORPG built from scratch in C++ (trailer)" data-astro-cid-assby6o5><img src="/thumbs/trailer.620ad882f1.webp" class="astro-assby6o5" alt="" width="1280" height="720" decoding="async" data-astro-cid-assby6o5><svg class="play" viewBox="0 0 22 16" aria-hidden="true" shape-rendering="crispEdges"><rect width="22" height="16" fill="currentColor"></rect><path d="M8 4h2v8h-2zM10 5h2v6h-2zM12 6h2v4h-2zM14 7h2v2h-2z" fill="var(--on-ember)"></path></svg></button></div><div class="slide" role="group" aria-roledescription="slide" aria-label="2 of 6" data-id="Ao0zS-Q_9Z8" data-title="Weather effects and ambient sound in a C++ MMORPG | nanoMMO Devlog" data-astro-cid-assby6o5><button type="button" class="start" aria-label="Play Weather effects and ambient sound in a C++ MMORPG | nanoMMO Devlog" data-astro-cid-assby6o5><img src="/thumbs/ep086-fire-rain-fireflies-sound.af1a4903af.webp" class="astro-assby6o5" alt="" width="1280" height="720" decoding="async" fetchpriority="low" data-astro-cid-assby6o5><svg class="play" viewBox="0 0 22 16" aria-hidden="true" shape-rendering="crispEdges"><rect width="22" height="16" fill="currentColor"></rect><path d="M8 4h2v8h-2zM10 5h2v6h-2zM12 6h2v4h-2zM14 7h2v2h-2z" fill="var(--on-ember)"></path></svg></button></div><div class="slide" role="group" aria-roledescription="slide" aria-label="3 of 6" data-id="wl4jxKw5Npc" data-title="MMORPG PvP duels in C++ that end at one health | nanoMMO Devlog" data-astro-cid-assby6o5><button type="button" class="start" aria-label="Play MMORPG PvP duels in C++ that end at one health | nanoMMO Devlog" data-astro-cid-assby6o5><img src="/thumbs/ep081-duels.9da00e6f12.webp" class="astro-assby6o5" alt="" width="1280" height="720" decoding="async" fetchpriority="low" data-astro-cid-assby6o5><svg class="play" viewBox="0 0 22 16" aria-hidden="true" shape-rendering="crispEdges"><rect width="22" height="16" fill="currentColor"></rect><path d="M8 4h2v8h-2zM10 5h2v6h-2zM12 6h2v4h-2zM14 7h2v2h-2z" fill="var(--on-ember)"></path></svg></button></div><div class="slide" role="group" aria-roledescription="slide" aria-label="4 of 6" data-id="nbO4MaJF4Xo" data-title="Playing my C++ MMORPG offline in a browser, without a server | nanoMMO Devlog" data-astro-cid-assby6o5><button type="button" class="start" aria-label="Play Playing my C++ MMORPG offline in a browser, without a server | nanoMMO Devlog" data-astro-cid-assby6o5><img src="/thumbs/ep078-offline-play.b987c6413e.webp" class="astro-assby6o5" alt="" width="1280" height="720" decoding="async" fetchpriority="low" data-astro-cid-assby6o5><svg class="play" viewBox="0 0 22 16" aria-hidden="true" shape-rendering="crispEdges"><rect width="22" height="16" fill="currentColor"></rect><path d="M8 4h2v8h-2zM10 5h2v6h-2zM12 6h2v4h-2zM14 7h2v2h-2z" fill="var(--on-ember)"></path></svg></button></div><div class="slide" role="group" aria-roledescription="slide" aria-label="5 of 6" data-id="3YMm4EiW0-c" data-title="Running my C++ MMORPG in a web browser with WebAssembly | nanoMMO Devlog" data-astro-cid-assby6o5><button type="button" class="start" aria-label="Play Running my C++ MMORPG in a web browser with WebAssembly | nanoMMO Devlog" data-astro-cid-assby6o5><img src="/thumbs/ep076-client-in-browser.bfaf9cbf50.webp" class="astro-assby6o5" alt="" width="1280" height="720" decoding="async" fetchpriority="low" data-astro-cid-assby6o5><svg class="play" viewBox="0 0 22 16" aria-hidden="true" shape-rendering="crispEdges"><rect width="22" height="16" fill="currentColor"></rect><path d="M8 4h2v8h-2zM10 5h2v6h-2zM12 6h2v4h-2zM14 7h2v2h-2z" fill="var(--on-ember)"></path></svg></button></div><div class="slide" role="group" aria-roledescription="slide" aria-label="6 of 6" data-id="8-Vho4QHvV8" data-title="How MMO item dupes happen | nanoMMO Devlog" data-astro-cid-assby6o5><button type="button" class="start" aria-label="Play How MMO item dupes happen | nanoMMO Devlog" data-astro-cid-assby6o5><img src="/thumbs/ep075-item-dupes.6d6bb96c52.webp" class="astro-assby6o5" alt="" width="1280" height="720" decoding="async" fetchpriority="low" data-astro-cid-assby6o5><svg class="play" viewBox="0 0 22 16" aria-hidden="true" shape-rendering="crispEdges"><rect width="22" height="16" fill="currentColor"></rect><path d="M8 4h2v8h-2zM10 5h2v6h-2zM12 6h2v4h-2zM14 7h2v2h-2z" fill="var(--on-ember)"></path></svg></button></div></div><div class="dots" data-astro-cid-assby6o5><button type="button" aria-label="Show nanoMMO, an MMORPG built from scratch in C++ (trailer)" aria-current="true" data-astro-cid-assby6o5></button><button type="button" aria-label="Show Weather effects and ambient sound in a C++ MMORPG | nanoMMO Devlog" data-astro-cid-assby6o5></button><button type="button" aria-label="Show MMORPG PvP duels in C++ that end at one health | nanoMMO Devlog" data-astro-cid-assby6o5></button><button type="button" aria-label="Show Playing my C++ MMORPG offline in a browser, without a server | nanoMMO Devlog" data-astro-cid-assby6o5></button><button type="button" aria-label="Show Running my C++ MMORPG in a web browser with WebAssembly | nanoMMO Devlog" data-astro-cid-assby6o5></button><button type="button" aria-label="Show How MMO item dupes happen | nanoMMO Devlog" data-astro-cid-assby6o5></button></div></section><script type="module">var e=5e3;for(let t of document.querySelectorAll(`[data-slides]`)){let n=t.querySelector(`[data-track]`);if(!n)continue;let r=[...n.querySelectorAll(`.slide`)],i=[...t.querySelectorAll(`.dots button`)],a=matchMedia(`(prefers-reduced-motion: reduce)`).matches,o=r.map(e=>e.firstElementChild),s=0,c=a||r.length<2,l=!1,u=!1,d=e=>n.scrollTo({left:e*n.clientWidth,behavior:a?`auto`:`smooth`}),f=()=>{c=!0},p=!1;n.addEventListener(`scroll`,()=>{p||(p=!0,requestAnimationFrame(()=>{p=!1;let e=Math.round(n.scrollLeft/Math.max(1,n.clientWidth));e!==s&&r[e]&&(r[s].querySelector(`iframe`)&&r[s].replaceChildren(o[s]),s=e,i.forEach((t,n)=>n===e?t.setAttribute(`aria-current`,`true`):t.removeAttribute(`aria-current`)))}))},{passive:!0}),setInterval(()=>{!c&&!l&&u&&!document.hidden&&d((s+1)%r.length)},e),new IntersectionObserver(([e])=>u=e.isIntersecting,{threshold:.5}).observe(t),t.addEventListener(`pointerenter`,()=>l=!0),t.addEventListener(`pointerleave`,()=>l=!1),t.addEventListener(`focusin`,()=>l=!0),t.addEventListener(`focusout`,e=>l=t.contains(e.relatedTarget)),n.addEventListener(`pointerdown`,f,{passive:!0}),n.addEventListener(`touchstart`,f,{passive:!0}),n.addEventListener(`wheel`,e=>Math.abs(e.deltaX)>Math.abs(e.deltaY)&&f(),{passive:!0}),i.forEach((e,t)=>e.addEventListener(`click`,()=>{f(),d(t)})),r.forEach((e,t)=>o[t].addEventListener(`click`,()=>{f(),t!==s&&d(t);let n=document.createElement(`iframe`),r=new URLSearchParams({autoplay:`1`,rel:`0`});n.src=`https://www.youtube-nocookie.com/embed/${e.dataset.id}?${r}`,n.title=e.dataset.title??``,n.allow=`autoplay; encrypted-media; picture-in-picture; fullscreen`,n.allowFullscreen=!0,e.replaceChildren(n)}))}</script><p class="actions" data-astro-cid-3h6ed3sy><a class="primary" href="https://www.youtube.com/playlist?list=PLJcOiy0pkaG4" data-astro-cid-3h6ed3sy>Watch the series</a><a class="secondary" href="/play/" data-astro-cid-3h6ed3sy>Try it in your browser</a></p></div></div></header><section class="screens" aria-label="Screens from the game" data-astro-cid-iucqbpto><div class="deck" data-deck tabindex="0" role="region" aria-roledescription="carousel" aria-label="Screens from the game: drag it, or use the arrow keys" data-astro-cid-iucqbpto><button type="button" class="card front" data-card data-i="0" tabindex="0" style="--k: 0; --a: 0; --c: 1; --z: 100" aria-label="A frost blast into a crowd of skeletons, at night: open it bigger" data-astro-cid-iucqbpto><img src="/screens/frost-6b276c1d.webp" alt="" width="1920" height="1080" loading="eager" decoding="async" draggable="false" data-astro-cid-iucqbpto></button><button type="button" class="card" data-card data-i="1" tabindex="-1" style="--k: 1; --a: 1; --c: 0; --z: 90" aria-label="The character window and the bag, with a leather cap's tooltip: open it bigger" data-astro-cid-iucqbpto><img src="/screens/paper-doll-4f2a5754.webp" alt="" width="1920" height="1032" loading="eager" decoding="async" draggable="false" data-astro-cid-iucqbpto></button><button type="button" class="card" data-card data-i="2" tabindex="-1" style="--k: 2; --a: 2; --c: 0; --z: 80" aria-label="Two players against the skeletons by the spires: open it bigger" data-astro-cid-iucqbpto><img src="/screens/sword-2bceb9d0.webp" alt="" width="1920" height="1080" loading="eager" decoding="async" draggable="false" data-astro-cid-iucqbpto></button><button type="button" class="card" data-card data-i="3" tabindex="-1" style="--k: 3; --a: 3; --c: 0; --z: 70" aria-label="The login screen, picking a world: open it bigger" data-astro-cid-iucqbpto><img src="/screens/login-20a387d3.webp" alt="" width="1920" height="1032" loading="lazy" decoding="async" draggable="false" data-astro-cid-iucqbpto></button><button type="button" class="card" data-card data-i="4" data-far tabindex="-1" style="--k: 4; --a: 4; --c: 0; --z: 60" aria-label="The Ashlands at sunset: open it bigger" data-astro-cid-iucqbpto><img src="/screens/lava-ae99f683.webp" alt="" width="1920" height="1080" loading="lazy" decoding="async" draggable="false" data-astro-cid-iucqbpto></button><button type="button" class="card" data-card data-i="5" data-far tabindex="-1" style="--k: 5; --a: 5; --c: 0; --z: 50" aria-label="Bots fighting skeletons, with the chat, the hotbar and the minimap: open it bigger" data-astro-cid-iucqbpto><img src="/screens/crowd-05750c0b.webp" alt="" width="1920" height="1032" loading="lazy" decoding="async" draggable="false" data-astro-cid-iucqbpto></button><button type="button" class="card" data-card data-i="6" data-far tabindex="-1" style="--k: 6; --a: 6; --c: 0; --z: 40" aria-label="Severing Moon, a sword skill, in the Ashlands: open it bigger" data-astro-cid-iucqbpto><img src="/screens/severing-moon-4a058128.webp" alt="" width="1920" height="1450" loading="lazy" decoding="async" draggable="false" data-astro-cid-iucqbpto></button><button type="button" class="card" data-card data-i="7" data-far tabindex="-1" style="--k: 7; --a: 7; --c: 0; --z: 30" aria-label="Picking a character, with a 3D preview to turn: open it bigger" data-astro-cid-iucqbpto><img src="/screens/characters-569e32fc.webp" alt="" width="1920" height="1032" loading="lazy" decoding="async" draggable="false" data-astro-cid-iucqbpto></button><button type="button" class="card" data-card data-i="8" data-far tabindex="-1" style="--k: 8; --a: 8; --c: 0; --z: 20" aria-label="Facing the skeletons in the Ashlands: open it bigger" data-astro-cid-iucqbpto><img src="/screens/ashlands-02b2d795.webp" alt="" width="1920" height="1080" loading="lazy" decoding="async" draggable="false" data-astro-cid-iucqbpto></button><button type="button" class="card" data-card data-i="9" data-far tabindex="-1" style="--k: -7; --a: 7; --c: 0; --z: 30" aria-label="The settings, with the size of the interface: open it bigger" data-astro-cid-iucqbpto><img src="/screens/settings-9e15881c.webp" alt="" width="1920" height="1032" loading="lazy" decoding="async" draggable="false" data-astro-cid-iucqbpto></button><button type="button" class="card" data-card data-i="10" data-far tabindex="-1" style="--k: -6; --a: 6; --c: 0; --z: 40" aria-label="Skyrend, a sword skill, by the spires in the Meadows: open it bigger" data-astro-cid-iucqbpto><img src="/screens/skyrend-fb6a22db.webp" alt="" width="1920" height="1450" loading="lazy" decoding="async" draggable="false" data-astro-cid-iucqbpto></button><button type="button" class="card" data-card data-i="11" data-far tabindex="-1" style="--k: -5; --a: 5; --c: 0; --z: 50" aria-label="Throwing an item away from the bag: open it bigger" data-astro-cid-iucqbpto><img src="/screens/throw-cfbff518.webp" alt="" width="1920" height="1032" loading="lazy" decoding="async" draggable="false" data-astro-cid-iucqbpto></button><button type="button" class="card" data-card data-i="12" data-far tabindex="-1" style="--k: -4; --a: 4; --c: 0; --z: 60" aria-label="A sword against skeletons in the Meadows: open it bigger" data-astro-cid-iucqbpto><img src="/screens/meadows-2fcceb60.webp" alt="" width="1920" height="1080" loading="lazy" decoding="async" draggable="false" data-astro-cid-iucqbpto></button><button type="button" class="card" data-card data-i="13" tabindex="-1" style="--k: -3; --a: 3; --c: 0; --z: 70" aria-label="You died, a few seconds before the respawn: open it bigger" data-astro-cid-iucqbpto><img src="/screens/died-982086c5.webp" alt="" width="1920" height="1032" loading="lazy" decoding="async" draggable="false" data-astro-cid-iucqbpto></button><button type="button" class="card" data-card data-i="14" tabindex="-1" style="--k: -2; --a: 2; --c: 0; --z: 80" aria-label="Cyclone, three turns through the ash skeletons: open it bigger" data-astro-cid-iucqbpto><img src="/screens/cyclone-d1087542.webp" alt="" width="1920" height="1450" loading="eager" decoding="async" draggable="false" data-astro-cid-iucqbpto></button><button type="button" class="card" data-card data-i="15" tabindex="-1" style="--k: -1; --a: 1; --c: 0; --z: 90" aria-label="The world from the hills, down to the sea: open it bigger" data-astro-cid-iucqbpto><img src="/screens/world-4640865b.webp" alt="" width="1920" height="1080" loading="eager" decoding="async" draggable="false" data-astro-cid-iucqbpto></button></div><script>
