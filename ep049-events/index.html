@@ -145,6 +145,15 @@ section[aria-labelledby='start-here'] {
 .topic-n {
   color: var(--gold);
 }
+/* A topic card is its name and how many episodes it has, without their titles (Adrian,
+   2026-11-21). */
+#by-topic ~ .topics .topic-eps {
+  display: none;
+}
+#by-topic ~ .topics .topic {
+  justify-content: center;
+  padding-block: 20px;
+}
 
 /* A gold tab with the episode's level on it, as the thumbnails have. */
 .lv {
