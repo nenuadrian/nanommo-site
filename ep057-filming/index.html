@@ -129,6 +129,22 @@ a.hud:hover,
   margin: 1px 1px 0;
 }
 
+/* The home page's Start here isn't nanoMMO's (Adrian, 2026-11-21): the hero's buttons and the bar's
+   Get started already say where to start. */
+section[aria-labelledby='start-here'] {
+  display: none;
+}
+
+/* The topics three to a row, two on a narrower screen (aphrodite's phone layout keeps its two). */
+.topics {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+@media (max-width: 960px) {
+  .topics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
 /* The big numbers of Start here, as levels. */
 .step .n {
   font-family: var(--font-title);
