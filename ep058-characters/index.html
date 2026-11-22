@@ -4,8 +4,8 @@ gtag('js', new Date());
 gtag('config', "G-35TS0K7JQH");</script><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>MMO character selection in C++ with a 3D preview | nanoMMO</title><meta name="description" content="An account gets up to four characters in each world, with names of their own, picked on a screen that draws each one in 3D, after a login that comes first, in our C++ MMORPG."><link rel="canonical" href="https://nanommo.nenuadrian.com/ep058-characters/"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="alternate" type="application/rss+xml" title="nanoMMO" href="/rss.xml"><link rel="sitemap" href="/sitemap.xml"><meta name="theme-color" content="#0b0507"><meta property="og:site_name" content="nanoMMO"><meta property="og:type" content="video.episode"><meta property="og:title" content="MMO character selection in C++ with a 3D preview"><meta property="og:description" content="An account gets up to four characters in each world, with names of their own, picked on a screen that draws each one in 3D, after a login that comes first, in our C++ MMORPG."><meta property="og:url" content="https://nanommo.nenuadrian.com/ep058-characters/"><meta property="og:locale" content="en_GB"><meta property="og:image" content="https://nanommo.nenuadrian.com/thumbs/ep058-characters.e2165e96f7.jpg"><meta property="og:image:alt" content="MMO character selection in C++ with a 3D preview | Building nanoMMO"><meta name="twitter:card" content="summary_large_image"><style>:root{--bg:#0b0507;--bg-rgb:11 5 7;--surface:#150608;--surface-2:#21070b;--line:#33090f;--shadow:#4c0b14;--text:#f3e9dc;--heading:#ffffff;--prose:#e4d7cc;--muted:#b49f98;--faint:#917773;--ember:#ff5a3c;--ember-2:#ffa04a;--on-ember:#150608;--code:#4FC1FF;--font-display:"Jersey 15", var(--font-ui);--font-ui:"Inter", -apple-system, 'Helvetica Neue', sans-serif;--font-mono:"JetBrains Mono", Menlo, monospace;--font-hand:"Caveat", 'Comic Sans MS', cursive}</style><style>/* nanoMMO's site on top of aphrodite's: the pixel look's colours, and the game's own interface
    (client/theme.h): the faces it's set in, Cinzel for titles in carved gold capitals and Alegreya
    Sans for what's read, and its panels, dark, with their corners cut, a red glow under the title,
-   trimmed in brass with a thin light inside. The home page's quest log
-   and Under the hood (site/components/) are made of these; the rest of the site wears them too. */
+   trimmed in brass with a thin light inside. The home page's dev log
+   and Design choices (site/components/) are made of these; the rest of the site wears them too. */
 @import url('https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;500;700&family=Cinzel:wght@700&display=swap');
 
 :root {
@@ -226,9 +226,10 @@ body {
   margin-bottom: 26px;
 }
 
-/* Motion, kept small: cards and topics rise a little with a gold glow when pointed at, the quest
-   log's rows slide, its arcs open smoothly, the gems on its trunk catch the light now and then, and
-   sections rise into place as they scroll in. None of it for anyone who asks for less motion. */
+/* Motion, kept small: cards and topics rise a little with a gold glow when pointed at, the dev
+   log's rows slide, its older episodes open smoothly, the nodes on its line catch the light now and
+   then, and sections rise into place as they scroll in. None of it for anyone who asks for less
+   motion. */
 :root {
   interpolate-size: allow-keywords;
 }
@@ -243,14 +244,14 @@ body {
   transform: translateY(-4px);
   filter: drop-shadow(0 10px 18px rgb(255 160 74 / 0.16));
 }
-.quests details::details-content {
+.devlog details::details-content {
   block-size: 0;
   overflow: hidden;
   transition:
     block-size 320ms ease,
     content-visibility 320ms allow-discrete;
 }
-.quests details[open]::details-content {
+.devlog details[open]::details-content {
   block-size: auto;
 }
 @keyframes glint {
@@ -263,13 +264,13 @@ body {
     filter: brightness(1.7) drop-shadow(0 0 6px rgb(255 211 77 / 0.9));
   }
 }
-.quests .arc::before {
+.devlog .entry:nth-child(4n + 1) .node {
   animation: glint 7s ease-in-out infinite;
 }
-.quests .arc:nth-child(2n)::before {
+.devlog .entry:nth-child(8n + 1) .node {
   animation-delay: 2.3s;
 }
-.quests .arc:nth-child(3n)::before {
+.devlog .entry:nth-child(12n + 1) .node {
   animation-delay: 4.6s;
 }
 @keyframes rise {
@@ -279,7 +280,7 @@ body {
   }
 }
 @supports (animation-timeline: view()) {
-  .quests .arc,
+  .devlog .entry,
   .choices .panel,
   .cards > li,
   #by-topic ~ .topics > li {
@@ -291,10 +292,10 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .cards > li,
   #by-topic ~ .topics > li,
-  .quests .arc,
-  .quests .arc::before,
+  .devlog .entry,
+  .devlog .node,
   .choices .panel,
-  .quests details::details-content {
+  .devlog details::details-content {
     animation: none !important;
     transition: none !important;
     transform: none !important;
