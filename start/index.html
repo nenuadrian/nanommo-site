@@ -392,7 +392,7 @@ body {
 </tbody>
 </table>
 <h2 id="2-install-what-it-needs">2. Install what it needs</h2>
-<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">./doctor.sh</span></span></code></pre>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">scripts/doctor.sh</span></span></code></pre>
 <p>It checks the tools, the libraries, Docker, the ports and the certificates, and ends with one command
 that installs every missing package. What that is on a new machine:</p>
 <table>
@@ -421,7 +421,7 @@ that installs every missing package. What that is on a new machine:</p>
 </tr>
 </tbody>
 </table>
-<p>Run <code>./doctor.sh</code> again until every line is a tick.</p>
+<p>Run <code>scripts/doctor.sh</code> again until every line is a tick.</p>
 <h2 id="3-build-and-test">3. Build and test</h2>
 <pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">cmake</span><span style="color:#79B8FF"> --preset</span><span style="color:#9ECBFF"> release</span></span>
 <span class="line"><span style="color:#B392F0">cmake</span><span style="color:#79B8FF"> --build</span><span style="color:#79B8FF"> --preset</span><span style="color:#9ECBFF"> release</span></span>
@@ -478,7 +478,7 @@ the rest of <a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/checks
 </table>
 <h2 id="4-start-the-servers">4. Start the servers</h2>
 <pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">docker</span><span style="color:#9ECBFF"> compose</span><span style="color:#9ECBFF"> up</span><span style="color:#79B8FF"> -d</span><span style="color:#79B8FF"> --build</span><span style="color:#9ECBFF"> mysql</span><span style="color:#9ECBFF"> redis</span><span style="color:#9ECBFF"> consul</span><span style="color:#9ECBFF"> saver</span></span>
-<span class="line"><span style="color:#B392F0">tls/certificates.sh</span></span>
+<span class="line"><span style="color:#B392F0">scripts/certificates.sh</span></span>
 <span class="line"><span style="color:#B392F0">./build/bin/nanommo_login</span></span></code></pre>
 <p>Then, in another terminal:</p>
 <pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">./build/bin/nanommo_server</span></span></code></pre>
@@ -497,7 +497,7 @@ the rest of <a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/checks
 <td>3306, 6379, 8500</td>
 </tr>
 <tr>
-<td><code>tls/certificates.sh</code></td>
+<td><code>scripts/certificates.sh</code></td>
 <td>The certificates, once: <a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/accounts.md#tls">TLS</a></td>
 <td></td>
 </tr>
@@ -650,7 +650,7 @@ the rest of <a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/checks
 Meadows, for you alone, with nothing saved, as a browser plays it (<a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/web.md#offline">Offline</a>).</p>
 <h2 id="6-play-from-another-computer">6. Play from another computer</h2>
 <p>On the computer with the servers, at <code>192.168.1.20</code> in this example:</p>
-<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">tls/certificates.sh</span><span style="color:#9ECBFF"> tls</span><span style="color:#79B8FF"> 192.168.1.20</span></span>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">scripts/certificates.sh</span><span style="color:#9ECBFF"> tls</span><span style="color:#79B8FF"> 192.168.1.20</span></span>
 <span class="line"><span style="color:#B392F0">./build/bin/nanommo_login</span></span>
 <span class="line"><span style="color:#E1E4E8">NANOMMO_PUBLIC_HOST</span><span style="color:#F97583">=</span><span style="color:#9ECBFF">192.168.1.20</span><span style="color:#B392F0"> ./build/bin/nanommo_server</span></span></code></pre>
 <p>On the other computer, with the game built at the same version:</p>
@@ -665,7 +665,7 @@ Meadows, for you alone, with nothing saved, as a browser plays it (<a href="http
 </thead>
 <tbody>
 <tr>
-<td><code>tls/certificates.sh tls 192.168.1.20</code></td>
+<td><code>scripts/certificates.sh tls 192.168.1.20</code></td>
 <td>The certificate has to name the address the client asks for</td>
 </tr>
 <tr>
@@ -717,7 +717,7 @@ Meadows, for you alone, with nothing saved, as a browser plays it (<a href="http
 </tr>
 <tr>
 <td>Find who holds a port</td>
-<td><code>./doctor.sh</code></td>
+<td><code>scripts/doctor.sh</code></td>
 </tr>
 </tbody>
 </table>
@@ -734,10 +734,10 @@ Meadows, for you alone, with nothing saved, as a browser plays it (<a href="http
 <tr>
 <td><code>cmake: command not found</code>, or <code>CMake 3.28 or higher is required</code></td>
 <td>No CMake, or an old one</td>
-<td><code>./doctor.sh</code> says which, and what to install</td>
+<td><code>scripts/doctor.sh</code> says which, and what to install</td>
 </tr>
 <tr>
-<td><code>too old for C++23</code> from <code>./doctor.sh</code>, or errors at <code>this auto self</code></td>
+<td><code>too old for C++23</code> from <code>scripts/doctor.sh</code>, or errors at <code>this auto self</code></td>
 <td>A compiler from before the parts of C++23 the game uses, such as Ubuntu 24.04's GCC 13</td>
 <td>GCC 14, as in step 2. CMake keeps the compiler of its first run, so <code>rm -rf build</code> before building again</td>
 </tr>
@@ -759,7 +759,7 @@ Meadows, for you alone, with nothing saved, as a browser plays it (<a href="http
 <tr>
 <td><code>address already in use</code>, or <code>port is already allocated</code></td>
 <td>Something else holds one of the ports</td>
-<td><code>./doctor.sh</code> says who</td>
+<td><code>scripts/doctor.sh</code> says who</td>
 </tr>
 <tr>
 <td>Renderer, Sea and other client tests fail, and <code>DISPLAY</code> is missing</td>
@@ -774,12 +774,12 @@ Meadows, for you alone, with nothing saved, as a browser plays it (<a href="http
 <tr>
 <td><code>its certificate doesn't name 192.168.1.20</code></td>
 <td>The certificate lacks the address you asked for</td>
-<td><code>tls/certificates.sh tls 192.168.1.20</code> on the server, then start the servers again</td>
+<td><code>scripts/certificates.sh tls 192.168.1.20</code> on the server, then start the servers again</td>
 </tr>
 <tr>
 <td><code>its certificate has expired</code></td>
 <td>The servers' certificate lasts 825 days</td>
-<td><code>tls/certificates.sh</code> on the server, then start the servers again</td>
+<td><code>scripts/certificates.sh</code> on the server, then start the servers again</td>
 </tr>
 <tr>
 <td><code>its certificate isn't from the authority we trust</code></td>
