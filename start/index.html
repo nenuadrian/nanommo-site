@@ -338,7 +338,7 @@ body {
 </tr>
 <tr>
 <td>The first <code>docker compose up</code></td>
-<td>about ten minutes: it builds the saver's image</td>
+<td>about ten minutes, as it builds the saver's image</td>
 <td>the same</td>
 </tr>
 <tr>
@@ -361,7 +361,11 @@ body {
 <td>Its CMake is 3.22 and its compilers are too old for C++23, and the game needs CMake 3.28 and GCC 14</td>
 </tr>
 <tr>
-<td>Windows, and other Linux</td>
+<td>Windows</td>
+<td>Visual Studio 2026 and <a href="https://vcpkg.io">vcpkg</a>, with <code>VCPKG_ROOT</code> set to vcpkg's folder. <code>cmake --workflow --preset windows</code> from a Developer PowerShell for VS builds it all and runs the tests, as CI does</td>
+</tr>
+<tr>
+<td>Other Linux</td>
 <td>Not tested</td>
 </tr>
 </tbody>
@@ -394,7 +398,7 @@ body {
 <h2 id="2-install-what-it-needs">2. Install what it needs</h2>
 <pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">scripts/doctor.sh</span></span></code></pre>
 <p>It checks the tools, the libraries, Docker, the ports and the certificates, and ends with one command
-that installs every missing package. What that is on a new machine:</p>
+that installs every missing package. Here's what that is on a new machine.</p>
 <table>
 <thead>
 <tr>
@@ -413,7 +417,7 @@ that installs every missing package. What that is on a new machine:</p>
 </tr>
 <tr>
 <td>Ubuntu 24.04's compiler</td>
-<td>Its GCC 13 is too old for the C++23 the game uses, so build with GCC 14: <code>echo 'export CXX=g++-14' &gt;&gt; ~/.bashrc</code>, then open a new terminal</td>
+<td>Its GCC 13 is too old for the C++23 the game uses, so build with GCC 14, by running <code>echo 'export CXX=g++-14' &gt;&gt; ~/.bashrc</code>, then opening a new terminal</td>
 </tr>
 <tr>
 <td>Ubuntu, once</td>
@@ -460,11 +464,11 @@ the rest of <a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/checks
 <tbody>
 <tr>
 <td>The first build takes minutes</td>
-<td>CMake fetches the libraries a system doesn't have, and builds them: GoogleTest, raylib, Dear ImGui, rlImGui, abseil, protobuf, Asio, prometheus-cpp, hiredis, nlohmann/json and cpp-httplib</td>
+<td>CMake fetches the libraries a system doesn't have, and builds them. They're GoogleTest, raylib, Dear ImGui, rlImGui, abseil, protobuf, Asio, prometheus-cpp, hiredis, nlohmann/json and cpp-httplib</td>
 </tr>
 <tr>
 <td>Warnings from <code>_deps/</code></td>
-<td>They're the libraries', built as they come: the game's own code builds without one</td>
+<td>They're the libraries', built as they come, while the game's own code builds without one</td>
 </tr>
 <tr>
 <td><code>100% tests passed</code>, and some <code>(Skipped)</code></td>
@@ -472,7 +476,7 @@ the rest of <a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/checks
 </tr>
 <tr>
 <td><code>Can't connect to local MySQL server through socket</code></td>
-<td>MySQL's library takes <code>localhost</code> to mean its socket file: use <code>127.0.0.1</code></td>
+<td>MySQL's library takes <code>localhost</code> to mean its socket file, so use <code>127.0.0.1</code></td>
 </tr>
 </tbody>
 </table>
@@ -480,7 +484,7 @@ the rest of <a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/checks
 <pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">docker</span><span style="color:#9ECBFF"> compose</span><span style="color:#9ECBFF"> up</span><span style="color:#79B8FF"> -d</span><span style="color:#79B8FF"> --build</span><span style="color:#9ECBFF"> mysql</span><span style="color:#9ECBFF"> redis</span><span style="color:#9ECBFF"> consul</span><span style="color:#9ECBFF"> saver</span></span>
 <span class="line"><span style="color:#B392F0">scripts/certificates.sh</span></span>
 <span class="line"><span style="color:#B392F0">./build/bin/nanommo_login</span></span></code></pre>
-<p>Then, in another terminal:</p>
+<p>Then start a world in another terminal.</p>
 <pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">./build/bin/nanommo_server</span></span></code></pre>
 <table>
 <thead>
@@ -498,7 +502,7 @@ the rest of <a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/checks
 </tr>
 <tr>
 <td><code>scripts/certificates.sh</code></td>
-<td>The certificates, once: <a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/accounts.md#tls">TLS</a></td>
+<td>The certificates, once. More in <a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/accounts.md#tls">TLS</a></td>
 <td></td>
 </tr>
 <tr>
@@ -523,19 +527,19 @@ the rest of <a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/checks
 <tbody>
 <tr>
 <td>The storyteller's stories</td>
-<td><code>docker compose up -d --build storyteller</code>: <a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/npcs.md#the-storyteller">The storyteller</a></td>
+<td><code>docker compose up -d --build storyteller</code>. More in <a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/npcs.md#the-storyteller">The storyteller</a></td>
 </tr>
 <tr>
 <td>A second world</td>
-<td><code>NANOMMO_WORLD=Frost NANOMMO_METRICS_PORT=9465 ./build/bin/nanommo_server 7787</code>: <a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/worlds.md">Worlds</a></td>
+<td><code>NANOMMO_WORLD=Frost NANOMMO_METRICS_PORT=9465 ./build/bin/nanommo_server 7787</code>. More in <a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/worlds.md">Worlds</a></td>
 </tr>
 <tr>
 <td>Ten bots, playing</td>
-<td><code>./build/bin/nanommo_bot localhost localhost 10 10</code>: <a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/monitoring.md">Monitoring</a></td>
+<td><code>./build/bin/nanommo_bot localhost localhost 10 10</code>. More in <a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/monitoring.md">Monitoring</a></td>
 </tr>
 <tr>
 <td>Playing in a browser, online</td>
-<td><code>./build/bin/nanommo_gateway</code>, on port 8090, and the web build: <a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/web.md#online-through-the-gateway">The client in a browser</a></td>
+<td><code>./build/bin/nanommo_gateway</code>, on port 8090, and the web build. More in <a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/web.md#online-through-the-gateway">The client in a browser</a></td>
 </tr>
 </tbody>
 </table>
@@ -551,7 +555,7 @@ the rest of <a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/checks
 <tbody>
 <tr>
 <td>Login</td>
-<td>A name and a password: Make an account the first time, Log in after</td>
+<td>A name and a password, then Make an account the first time, and Log in after</td>
 </tr>
 <tr>
 <td>Worlds</td>
@@ -559,7 +563,7 @@ the rest of <a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/checks
 </tr>
 <tr>
 <td>Characters</td>
-<td>New character, or straight there with nobody yet: a name, a build, a skin and hair, and Create. Then Enter the world</td>
+<td>New character, or straight there with nobody yet. Choose a name, a build, a skin and hair, and Create. Then Enter the world</td>
 </tr>
 </tbody>
 </table>
@@ -646,14 +650,16 @@ the rest of <a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/checks
 </tbody>
 </table>
 <p>More in <a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/gameplay.md">Gameplay</a>.</p>
-<p>Without the servers, <code>./build/bin/nanommo_client --offline</code> plays a world of the client's own: the
+<p>Without the servers, <code>./build/bin/nanommo_client --offline</code> plays a world of the client's own, the
 Meadows, for you alone, with nothing saved, as a browser plays it (<a href="https://github.com/nenuadrian/nanoMMO/blob/main/docs/web.md#offline">Offline</a>).</p>
 <h2 id="6-play-from-another-computer">6. Play from another computer</h2>
-<p>On the computer with the servers, at <code>192.168.1.20</code> in this example:</p>
+<p>On the computer with the servers, at <code>192.168.1.20</code> in this example, make certificates that name
+its address and start the servers.</p>
 <pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">scripts/certificates.sh</span><span style="color:#9ECBFF"> tls</span><span style="color:#79B8FF"> 192.168.1.20</span></span>
 <span class="line"><span style="color:#B392F0">./build/bin/nanommo_login</span></span>
 <span class="line"><span style="color:#E1E4E8">NANOMMO_PUBLIC_HOST</span><span style="color:#F97583">=</span><span style="color:#9ECBFF">192.168.1.20</span><span style="color:#B392F0"> ./build/bin/nanommo_server</span></span></code></pre>
-<p>On the other computer, with the game built at the same version:</p>
+<p>On the other computer, with the game built at the same version, copy the servers' <code>ca.crt</code> and
+start the client with it.</p>
 <pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#B392F0">scp</span><span style="color:#9ECBFF"> you@192.168.1.20:nanoMMO/tls/ca.crt</span><span style="color:#9ECBFF"> tls/their-ca.crt</span></span>
 <span class="line"><span style="color:#E1E4E8">NANOMMO_TLS_CA</span><span style="color:#F97583">=</span><span style="color:#9ECBFF">tls/their-ca.crt</span><span style="color:#B392F0"> ./build/bin/nanommo_client</span><span style="color:#79B8FF"> 192.168.1.20</span></span></code></pre>
 <table>
@@ -682,11 +688,11 @@ Meadows, for you alone, with nothing saved, as a browser plays it (<a href="http
 </tr>
 <tr>
 <td>A firewall</td>
-<td>Let in 7778 over TCP and 7777 over TCP and UDP: <code>sudo ufw allow 7778/tcp &amp;&amp; sudo ufw allow 7777</code></td>
+<td>Let in 7778 over TCP and 7777 over TCP and UDP, with <code>sudo ufw allow 7778/tcp &amp;&amp; sudo ufw allow 7777</code></td>
 </tr>
 <tr>
 <td>macOS</td>
-<td>Give the terminal Local Network access: System Settings, Privacy &amp; Security, Local Network</td>
+<td>Give the terminal Local Network access, in System Settings, Privacy &amp; Security, Local Network</td>
 </tr>
 </tbody>
 </table>
@@ -814,7 +820,7 @@ Meadows, for you alone, with nothing saved, as a browser plays it (<a href="http
 <tr>
 <td><code>couldn't load ... background.mp3</code></td>
 <td>The music isn't in git, for its licence</td>
-<td>The game plays without it: <a href="https://github.com/nenuadrian/nanoMMO/blob/main/assets/music/README.md">assets/music</a></td>
+<td>The game plays without it. More in <a href="https://github.com/nenuadrian/nanoMMO/blob/main/assets/music/README.md">assets/music</a></td>
 </tr>
 </tbody>
 </table>
