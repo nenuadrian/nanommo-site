@@ -1,0 +1,312 @@
+<!DOCTYPE html><html lang="en-GB" data-astro-cid-hkbrpulz><head><script async src="https://www.googletagmanager.com/gtag/js?id=G-35TS0K7JQH"></script><script>window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', "G-35TS0K7JQH");</script><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sharing my MMORPG&#39;s game rules between C++ server and client | nanoMMO</title><meta name="description" content="Our C++ MMORPG's world, and what each player is shown of it and what their inputs do, move out of the server into a library the client can run too."><link rel="canonical" href="https://nanommo.nenuadrian.com/ep077-world-library/"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="alternate" type="application/rss+xml" title="nanoMMO" href="/rss.xml"><link rel="sitemap" href="/sitemap.xml"><meta name="theme-color" content="#0b0507"><meta property="og:site_name" content="nanoMMO"><meta property="og:type" content="video.episode"><meta property="og:title" content="Sharing my MMORPG's game rules between C++ server and client"><meta property="og:description" content="Our C++ MMORPG's world, and what each player is shown of it and what their inputs do, move out of the server into a library the client can run too."><meta property="og:url" content="https://nanommo.nenuadrian.com/ep077-world-library/"><meta property="og:locale" content="en_GB"><meta property="og:image" content="https://nanommo.nenuadrian.com/thumbs/ep077-world-library.77fd7b9a41.jpg"><meta property="og:image:alt" content="Sharing my MMORPG's game rules between C++ server and client | nanoMMO Devlog"><meta name="twitter:card" content="summary_large_image"><style>:root{--bg:#0b0507;--bg-rgb:11 5 7;--surface:#150608;--surface-2:#21070b;--line:#33090f;--shadow:#4c0b14;--text:#f3e9dc;--heading:#ffffff;--prose:#e4d7cc;--muted:#b49f98;--faint:#917773;--ember:#ff5a3c;--ember-2:#ffa04a;--on-ember:#150608;--code:#4FC1FF;--font-display:"Jersey 15", var(--font-ui);--font-ui:"Inter", -apple-system, 'Helvetica Neue', sans-serif;--font-mono:"JetBrains Mono", Menlo, monospace;--font-hand:"Caveat", 'Comic Sans MS', cursive}</style><style>/* nanoMMO's site on top of aphrodite's: the pixel look's colours, and the game's own interface
+   (client/theme.h): the faces it's set in, Cinzel for titles in carved gold capitals and Alegreya
+   Sans for what's read, and its panels, dark, with their corners cut, a red glow under the title,
+   trimmed in brass with a thin light inside. The home page's dev log
+   and Design choices (site/components/) are made of these; the rest of the site wears them too. */
+@import url('https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;500;700&family=Cinzel:wght@700&display=swap');
+
+:root {
+  --heading: #f3e9dc;
+  --prose: #e6d8ca;
+  --muted: #b5a297;
+  --faint: #8f7b70;
+  --on-ember: #1a0a0c;
+  --font-ui: 'Alegreya Sans', system-ui, sans-serif;
+  --font-title: 'Cinzel', Georgia, serif;
+  /* The interface's colours, as client/theme.h has them. */
+  --night: #0b0507;
+  --coal: #1e0e11;
+  --wine: #4c0b14;
+  --crimson: #94121f;
+  --gold: #ffd34d;
+  --gold-light: #fff3c4;
+  --gold-dark: #c98a12;
+  --brass: #8a6226;
+  --good: #7ed670;
+  --cut: 10px;
+}
+
+body {
+  font-size: 1.06rem;
+}
+
+/* A title in carved gold capitals, as the game's windows have. */
+.section-title,
+.hud-title {
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: clamp(1.45rem, 2.6vw, 1.9rem);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  background: linear-gradient(180deg, var(--gold-light) 0%, var(--gold) 45%, var(--gold-dark) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 0 rgb(0 0 0 / 0.85));
+}
+
+/* Under a title: a line that fades in from its ends, with a diamond in its middle. */
+.hud-rule {
+  position: relative;
+  height: 1px;
+  margin: 10px 0 0;
+  background: linear-gradient(90deg, transparent, var(--brass) 20%, var(--gold-dark) 50%, var(--brass) 80%, transparent);
+}
+.hud-rule::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  background: var(--gold);
+  border: 1px solid var(--night);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+/* A panel: brass behind, the dark inside it a pixel in, both with their corners cut, a red glow
+   under the top, a fine grain, and a bevel: light along the top inside, shade along the bottom.
+   Clipping takes the outline round the cuts. */
+.hud,
+.step,
+.topic,
+.card {
+  position: relative;
+  isolation: isolate;
+  border: 0 !important;
+  background: var(--brass) !important;
+  clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 calc(100% - var(--cut)), 0 var(--cut));
+  transition: background-color 120ms ease;
+}
+.hud::before,
+.step::before,
+.topic::before,
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  clip-path: polygon(calc(var(--cut) - 0.5px) 0, calc(100% - var(--cut) + 0.5px) 0, 100% calc(var(--cut) - 0.5px), 100% calc(100% - var(--cut) + 0.5px), calc(100% - var(--cut) + 0.5px) 100%, calc(var(--cut) - 0.5px) 100%, 0 calc(100% - var(--cut) + 0.5px), 0 calc(var(--cut) - 0.5px));
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.92 0 0 0 0 0.85 0 0 0 0.055 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 70% 46px at 50% 0, rgb(148 18 31 / 0.5), transparent 100%),
+    linear-gradient(180deg, var(--coal), var(--night));
+  box-shadow:
+    inset 0 0 0 1px rgb(255 243 196 / 0.07),
+    inset 0 1px 0 1px rgb(255 243 196 / 0.08),
+    inset 0 -24px 36px -12px rgb(0 0 0 / 0.45);
+}
+a.hud:hover,
+.topic:hover,
+.card:hover {
+  background: var(--gold-dark) !important;
+}
+.card {
+  box-shadow: none !important;
+  z-index: 0;
+}
+.card .thumb {
+  margin: 1px 1px 0;
+}
+
+/* The home page's Start here isn't nanoMMO's (Adrian, 2026-11-21): the hero's buttons and the bar's
+   Get started already say where to start. */
+section[aria-labelledby='start-here'] {
+  display: none;
+}
+
+/* Nor its Latest episodes (Adrian, 2026-11-22): the dev log below the hero has every one, newest
+   first, each with what it's about. */
+section[aria-labelledby='latest'] {
+  display: none;
+}
+
+/* The home page's topics three to a row, two on a narrower screen (aphrodite's phone layout keeps
+   its two); the episodes page's list of topics is left as it is. */
+#by-topic ~ .topics {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+@media (max-width: 960px) {
+  #by-topic ~ .topics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* The big numbers of Start here, as levels. */
+.step .n {
+  font-family: var(--font-title);
+  color: var(--gold);
+  font-size: 2.2rem;
+}
+.step h3,
+.topic-name {
+  font-family: var(--font-title);
+  letter-spacing: 0.04em;
+  color: var(--gold-light);
+}
+.topic-n {
+  color: var(--gold);
+}
+/* A topic card is its name and how many episodes it has, without their titles (Adrian,
+   2026-11-21). */
+#by-topic ~ .topics .topic-eps {
+  display: none;
+}
+#by-topic ~ .topics .topic {
+  justify-content: center;
+  padding-block: 20px;
+}
+
+/* A gold tab with the episode's level on it, as the thumbnails have. */
+.lv {
+  display: inline-block;
+  padding: 2px 8px 1px;
+  font-family: var(--font-title);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1.5;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--night);
+  background: linear-gradient(180deg, var(--gold-light), var(--gold) 55%, var(--gold-dark));
+  border: 1px solid var(--night);
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.7);
+  text-decoration: none;
+}
+a.lv:hover {
+  color: var(--night);
+  filter: brightness(1.12);
+}
+.lv.locked {
+  color: var(--faint);
+  background: var(--coal);
+  border-color: var(--brass);
+}
+
+/* The page behind it all: a warm near-black, a fine grain, a little of the fire's red at the top,
+   and the edges going darker, as the game's screen does. Fixed, so it stays put as the page moves. */
+body {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.9 0 0 0 0 0.82 0 0 0 0.045 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 120% 70% at 50% -10%, rgb(148 18 31 / 0.16), transparent 60%),
+    radial-gradient(ellipse 140% 100% at 50% 50%, transparent 55%, rgb(0 0 0 / 0.55) 100%),
+    #0c0608;
+  background-attachment: fixed;
+}
+
+/* Each section the same: its title centred, the line with a diamond under it, and the same room
+   above it. */
+.block {
+  padding-block: clamp(64px, 8vw, 104px) 0 !important;
+}
+.section-title {
+  display: block;
+  text-align: center;
+  margin: 0 0 32px !important;
+}
+.section-title::after {
+  content: '';
+  display: block;
+  width: min(760px, 100%);
+  height: 11px;
+  margin: 14px auto 0;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 0.8 11.2 6 6 11.2 0.8 6Z' fill='%23ffd34d' stroke='%230b0507' stroke-width='1'/%3E%3C/svg%3E") center / 11px 11px no-repeat,
+    linear-gradient(90deg, transparent, var(--brass) 20%, var(--gold-dark) 50%, var(--brass) 80%, transparent) center / 100% 1px no-repeat;
+}
+.head {
+  flex-direction: column;
+  align-items: center !important;
+  gap: 0 !important;
+}
+.head .section-title {
+  width: 100%;
+  margin-bottom: 14px !important;
+}
+.head .all {
+  margin-bottom: 26px;
+}
+
+/* Motion, kept small: cards and topics rise a little with a gold glow when pointed at, the dev
+   log's rows slide, its older episodes open smoothly, the nodes on its line catch the light now and
+   then, and sections rise into place as they scroll in. None of it for anyone who asks for less
+   motion. */
+:root {
+  interpolate-size: allow-keywords;
+}
+.cards > li,
+#by-topic ~ .topics > li {
+  transition:
+    transform 180ms ease,
+    filter 180ms ease;
+}
+.cards > li:hover,
+#by-topic ~ .topics > li:hover {
+  transform: translateY(-4px);
+  filter: drop-shadow(0 10px 18px rgb(255 160 74 / 0.16));
+}
+.devlog details::details-content {
+  block-size: 0;
+  overflow: hidden;
+  transition:
+    block-size 320ms ease,
+    content-visibility 320ms allow-discrete;
+}
+.devlog details[open]::details-content {
+  block-size: auto;
+}
+@keyframes glint {
+  0%,
+  90%,
+  100% {
+    filter: brightness(1);
+  }
+  94% {
+    filter: brightness(1.7) drop-shadow(0 0 6px rgb(255 211 77 / 0.9));
+  }
+}
+.devlog .entry:nth-child(4n + 1) .node {
+  animation: glint 7s ease-in-out infinite;
+}
+.devlog .entry:nth-child(8n + 1) .node {
+  animation-delay: 2.3s;
+}
+.devlog .entry:nth-child(12n + 1) .node {
+  animation-delay: 4.6s;
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+}
+@supports (animation-timeline: view()) {
+  .devlog .entry,
+  .choices .panel,
+  .cards > li,
+  #by-topic ~ .topics > li {
+    animation: rise linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 35%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cards > li,
+  #by-topic ~ .topics > li,
+  .devlog .entry,
+  .devlog .node,
+  .choices .panel,
+  .devlog details::details-content {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+</style><script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoObject","name":"Sharing my MMORPG's game rules between C++ server and client | nanoMMO Devlog","description":"Our C++ MMORPG's game rules move out of the world server into a library of their own, so the client can run them too. The world, with its monsters, NPCs, levels and trades, builds without a database or a network, and the code that turns a player's inputs into the world's actions, and the world into what each player is shown, moves out of the server into two parts of that library, with tests of their own, while the server's older tests say it behaves as it did. This is episode 77 of a series about building an MMORPG from scratch in C++, with the focus on the engineering around the game.","thumbnailUrl":["https://nanommo.nenuadrian.com/thumbs/ep077-world-library.77fd7b9a41.jpg"],"uploadDate":"2026-11-16","duration":"PT0H21M29S","embedUrl":"https://www.youtube.com/embed/a0nbUIQ_3Wc","url":"https://www.youtube.com/watch?v=a0nbUIQ_3Wc","hasPart":[{"@type":"Clip","name":"Intro","startOffset":0,"endOffset":48,"url":"https://www.youtube.com/watch?v=a0nbUIQ_3Wc"},{"@type":"Clip","name":"Last time","startOffset":48,"endOffset":85,"url":"https://www.youtube.com/watch?v=a0nbUIQ_3Wc&t=48s"},{"@type":"Clip","name":"Today","startOffset":85,"endOffset":127,"url":"https://www.youtube.com/watch?v=a0nbUIQ_3Wc&t=85s"},{"@type":"Clip","name":"The world as a library","startOffset":127,"endOffset":206,"url":"https://www.youtube.com/watch?v=a0nbUIQ_3Wc&t=127s"},{"@type":"Clip","name":"What each player is shown","startOffset":206,"endOffset":671,"url":"https://www.youtube.com/watch?v=a0nbUIQ_3Wc&t=206s"},{"@type":"Clip","name":"What each player's inputs do","startOffset":671,"endOffset":1114,"url":"https://www.youtube.com/watch?v=a0nbUIQ_3Wc&t=671s"},{"@type":"Clip","name":"The server, as before","startOffset":1114,"endOffset":1161,"url":"https://www.youtube.com/watch?v=a0nbUIQ_3Wc&t=1114s"},{"@type":"Clip","name":"Writing it down","startOffset":1161,"endOffset":1192,"url":"https://www.youtube.com/watch?v=a0nbUIQ_3Wc&t=1161s"},{"@type":"Clip","name":"Wrap-up","startOffset":1192,"endOffset":1217,"url":"https://www.youtube.com/watch?v=a0nbUIQ_3Wc&t=1192s"},{"@type":"Clip","name":"Playing it","startOffset":1217,"endOffset":1289,"url":"https://www.youtube.com/watch?v=a0nbUIQ_3Wc&t=1217s"}]}</script><meta property="video:release_date" content="2026-11-16"><meta property="video:duration" content="1289"><meta property="video:tag" content="game architecture"><meta property="video:tag" content="refactoring"><meta property="video:tag" content="shared code"><meta property="video:tag" content="c++"><meta property="video:tag" content="mmorpg"><meta property="video:tag" content="game server"><meta property="video:tag" content="client server"><meta property="video:tag" content="cmake"><meta property="video:tag" content="game development"><meta property="video:tag" content="gamedev"><link rel="stylesheet" href="/_astro/_id_.Ty0vUL-Q.css"><link rel="stylesheet" href="/_astro/Base.4mH8VIvv.css"><style>@layer aphrodite{.player[data-astro-cid-g2mknjow]{aspect-ratio:16/9;border:1px solid var(--line);box-shadow:8px 8px 0 var(--surface-2);background:#000;position:relative}.player[data-astro-cid-g2mknjow].away:after{content:"In the mini player";font:.85rem var(--font-mono);color:var(--faint);place-items:center;display:grid;position:absolute;inset:0}.screen[data-astro-cid-g2mknjow],.frame[data-astro-cid-g2mknjow]{width:100%;height:100%}.frame[data-astro-cid-g2mknjow]{overflow:hidden}.frame[data-astro-cid-g2mknjow] iframe,.start[data-astro-cid-g2mknjow],.start[data-astro-cid-g2mknjow] img[data-astro-cid-g2mknjow]{border:0;width:100%;height:100%;display:block}.start[data-astro-cid-g2mknjow]{cursor:pointer;background:0 0;padding:0;position:relative}.start[data-astro-cid-g2mknjow] img[data-astro-cid-g2mknjow]{object-fit:cover}.screen[data-astro-cid-g2mknjow].docked{z-index:9;position:fixed}.docked[data-astro-cid-g2mknjow] .frame[data-astro-cid-g2mknjow]{border:1px solid var(--line);box-shadow:6px 6px 0 var(--shadow);background:#000}.screen[data-astro-cid-g2mknjow].corner{right:16px;bottom:calc(16px + env(safe-area-inset-bottom));aspect-ratio:16/9;width:min(58vw,340px);height:auto}.close[data-astro-cid-g2mknjow]{border:1px solid var(--line);background:var(--surface-2);width:26px;height:26px;color:var(--muted);cursor:pointer;padding:0;display:none;position:absolute;top:-12px;right:-12px}.close[data-astro-cid-g2mknjow]:hover{color:var(--ember-2);border-color:var(--ember)}.close[data-astro-cid-g2mknjow] svg{fill:currentColor;width:12px;height:12px;margin:auto;display:block}.docked[data-astro-cid-g2mknjow] .close[data-astro-cid-g2mknjow]{display:block}.corner[data-astro-cid-g2mknjow] .close[data-astro-cid-g2mknjow]{right:-6px}.docked[data-astro-cid-g2mknjow] .start[data-astro-cid-g2mknjow] .play{width:55px;height:40px}.start[data-astro-cid-g2mknjow] .play{width:88px;height:64px;color:var(--ember);filter:drop-shadow(6px 6px 0 var(--shadow));transition:color .12s;position:absolute;top:50%;left:50%;translate:-50% -50%}.start[data-astro-cid-g2mknjow]:hover .play,.start[data-astro-cid-g2mknjow]:focus-visible .play{color:var(--ember-2)}.draft[data-astro-cid-g2mknjow]{text-align:center;background:var(--bg) var(--field) center / cover;place-items:center;padding:24px;display:grid}.draft[data-astro-cid-g2mknjow] p[data-astro-cid-g2mknjow]{background:rgb(var(--bg-rgb) / .8);gap:12px;margin:0;padding:20px 28px;display:grid}.draft[data-astro-cid-g2mknjow] .display[data-astro-cid-g2mknjow]{font-size:clamp(2rem,6vw,4rem)}.draft[data-astro-cid-g2mknjow] p[data-astro-cid-g2mknjow]>span[data-astro-cid-g2mknjow]:last-child{color:var(--muted);font-family:var(--font-mono);font-size:.85rem}}
+</style></head><body data-palette="{&quot;field&quot;:[&quot;#0b0507&quot;,&quot;#150608&quot;,&quot;#21070b&quot;,&quot;#33090f&quot;,&quot;#4c0b14&quot;,&quot;#6c0e19&quot;,&quot;#94121f&quot;,&quot;#c41d29&quot;],&quot;ember&quot;:[&quot;#ff5a3c&quot;,&quot;#ffa04a&quot;]}" data-astro-cid-hkbrpulz><header class="bar" data-astro-cid-hkbrpulz><div class="wrap bar-inner" data-astro-cid-hkbrpulz><a class="brand" href="/" data-astro-cid-hkbrpulz>nanoMMO</a><div class="search" data-search data-astro-cid-hkbrpulz><form class="search-form" id="site-search" role="search" action="/" data-astro-cid-hkbrpulz><svg class="glass" viewBox="0 0 8 8" aria-hidden="true" shape-rendering="crispEdges" data-astro-cid-hkbrpulz><path d="M2 0h3v1h-3zM1 1h1v1h-1zM5 1h1v1h-1zM0 2h1v3h-1zM6 2h1v3h-1zM1 5h1v1h-1zM5 5h1v1h-1zM2 6h3v1h-3zM6 6h1v1h-1zM7 7h1v1h-1z" data-astro-cid-hkbrpulz></path></svg><input type="search" name="q" placeholder="Search episodes" aria-label="Search episodes" autocomplete="off" spellcheck="false" enterkeyhint="go" role="combobox" aria-expanded="false" aria-controls="search-results" aria-autocomplete="list" data-astro-cid-hkbrpulz><button type="button" class="search-close" aria-label="Close the search" data-astro-cid-hkbrpulz><svg viewBox="0 0 8 8" aria-hidden="true" shape-rendering="crispEdges"><path d="M1 1h1v1h-1zM2 2h1v1h-1zM3 3h2v2h-2zM5 2h1v1h-1zM6 1h1v1h-1zM2 5h1v1h-1zM1 6h1v1h-1zM5 5h1v1h-1zM6 6h1v1h-1z"></path></svg></button></form><ul class="results" id="search-results" role="listbox" aria-label="Episodes" hidden data-astro-cid-hkbrpulz></ul></div><button type="button" class="search-open" aria-label="Search" aria-expanded="false" aria-controls="site-search" data-astro-cid-hkbrpulz><svg class="glass" viewBox="0 0 8 8" aria-hidden="true" shape-rendering="crispEdges" data-astro-cid-hkbrpulz><path d="M2 0h3v1h-3zM1 1h1v1h-1zM5 1h1v1h-1zM0 2h1v3h-1zM6 2h1v3h-1zM1 5h1v1h-1zM5 5h1v1h-1zM2 6h3v1h-3zM6 6h1v1h-1zM7 7h1v1h-1z" data-astro-cid-hkbrpulz></path></svg></button><button type="button" class="menu" aria-expanded="false" aria-controls="site-nav" aria-label="Menu" data-astro-cid-hkbrpulz><svg class="open-icon" viewBox="0 0 8 7" aria-hidden="true" shape-rendering="crispEdges" data-astro-cid-hkbrpulz><path d="M0 0h8v1h-8zM0 3h8v1h-8zM0 6h8v1h-8z" data-astro-cid-hkbrpulz></path></svg><svg viewBox="0 0 8 8" aria-hidden="true" shape-rendering="crispEdges"><path d="M1 1h1v1h-1zM2 2h1v1h-1zM3 3h2v2h-2zM5 2h1v1h-1zM6 1h1v1h-1zM2 5h1v1h-1zM1 6h1v1h-1zM5 5h1v1h-1zM6 6h1v1h-1z"></path></svg></button><nav id="site-nav" aria-label="Site" data-astro-cid-hkbrpulz><a href="/" data-astro-cid-hkbrpulz>Home</a><a class="episodes" href="/episodes/" data-astro-cid-hkbrpulz>Episodes</a><a href="/start/" data-astro-cid-hkbrpulz>Get started</a><a href="/about/" data-astro-cid-hkbrpulz>About</a><a href="https://www.youtube.com/@adrian-m-nenu" data-astro-cid-hkbrpulz>YouTube</a><a href="https://github.com/nenuadrian/nanoMMO" data-astro-cid-hkbrpulz>Code</a><a href="https://nenuadrian.github.io/nanoMMO/" data-astro-cid-hkbrpulz>Docs</a><a href="https://github.com/nenuadrian/nanoMMO/tree/main/docs/decisions" data-astro-cid-hkbrpulz>Decisions</a></nav></div></header><header class="hero field" style="--field: url(/field/ep077-world-library.svg)" data-seed="77" data-calm="left" data-astro-cid-7sree6uj><div class="wrap" data-astro-cid-7sree6uj><ul class="tags" data-astro-cid-7sree6uj><li data-astro-cid-7sree6uj>Episode 77</li><li data-astro-cid-7sree6uj>21 min</li></ul><h1 data-astro-cid-7sree6uj>Sharing my MMORPG&#39;s game rules between C++ server and client</h1><p class="hand" data-astro-cid-7sree6uj>Our C++ MMORPG&#39;s world, and what each player is shown of it and what their inputs do, move out of the server into a library the client can run too.</p><p class="watch" data-astro-cid-7sree6uj><a href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc" data-astro-cid-7sree6uj>Watch on YouTube</a></p></div></header><div class="wrap layout" data-astro-cid-kpaidhwy><main data-astro-cid-kpaidhwy><div class="player" data-player="a0nbUIQ_3Wc" data-title="Sharing my MMORPG's game rules between C++ server and client | nanoMMO Devlog" data-astro-cid-g2mknjow><div class="screen" data-astro-cid-g2mknjow><div class="frame" data-astro-cid-g2mknjow><button type="button" class="start" aria-label="Play Sharing my MMORPG's game rules between C++ server and client | nanoMMO Devlog" data-astro-cid-g2mknjow><img src="/thumbs/ep077-world-library.77fd7b9a41.webp" class="astro-g2mknjow" alt="" width="1280" height="720" data-astro-cid-g2mknjow><svg class="play" viewBox="0 0 22 16" aria-hidden="true" shape-rendering="crispEdges"><rect width="22" height="16" fill="currentColor"></rect><path d="M8 4h2v8h-2zM10 5h2v6h-2zM12 6h2v4h-2zM14 7h2v2h-2z" fill="var(--on-ember)"></path></svg></button></div><button type="button" class="close" aria-label="Close the mini player" data-astro-cid-g2mknjow><svg viewBox="0 0 8 8" aria-hidden="true" shape-rendering="crispEdges"><path d="M1 1h1v1h-1zM2 2h1v1h-1zM3 3h2v2h-2zM5 2h1v1h-1zM6 1h1v1h-1zM2 5h1v1h-1zM1 6h1v1h-1zM5 5h1v1h-1zM6 6h1v1h-1z"></path></svg></button></div></div><script type="module">var e=`https://www.youtube-nocookie.com`,t=document.querySelector(`[data-player]`),n=t?.querySelector(`.screen`),r=t?.querySelector(`.frame`);if(t&&n&&r){let i=document.querySelector(`[data-mini-slot]`),a=(t,n,r=[])=>t.contentWindow?.postMessage(JSON.stringify({event:`command`,func:n,args:r}),e),o=!0,s=!1,c=!1,l=``,u=()=>{if(!s)return;let e=i?.getClientRects().length?i.getBoundingClientRect():null,t=e?`${e.left},${e.top},${e.width},${e.height}`:`corner`;t!==l&&(l=t,n.classList.toggle(`corner`,!e),e?Object.assign(n.style,{left:`${e.left}px`,top:`${e.top}px`,width:`${e.width}px`,height:`${e.height}px`}):n.removeAttribute(`style`)),requestAnimationFrame(u)},d=e=>{s=e,l=``,document.documentElement.classList.toggle(`mini-docked`,e),t.classList.toggle(`away`,e),n.classList.toggle(`docked`,e),e?requestAnimationFrame(u):(n.classList.remove(`corner`),n.removeAttribute(`style`))},f=()=>{let e=!o&&!c;e!==s&&d(e)},p=n=>{let i=r.querySelector(`iframe`);if(i){a(i,`seekTo`,[n,!0]),a(i,`playVideo`);return}let o=document.createElement(`iframe`),s=new URLSearchParams({autoplay:`1`,enablejsapi:`1`,rel:`0`,start:String(Math.floor(n))});o.src=`${e}/embed/${t.dataset.player}?${s}`,o.title=t.dataset.title??``,o.allow=`autoplay; encrypted-media; picture-in-picture; fullscreen`,o.allowFullscreen=!0,r.replaceChildren(o)};t.dataset.follow!==`no`&&new IntersectionObserver(([e])=>{o=e.intersectionRatio>=.5||e.boundingClientRect.top>0,o&&(c=!1),f()},{threshold:[0,.5,1]}).observe(t),t.querySelector(`.start`)?.addEventListener(`click`,()=>p(0)),n.querySelector(`.close`)?.addEventListener(`click`,()=>{let e=r.querySelector(`iframe`);e&&a(e,`pauseVideo`),c=!0,f()}),document.addEventListener(`click`,e=>{let t=e.target.closest(`a[data-seek]`);!t||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||(e.preventDefault(),c=!1,p(Number(t.dataset.seek)),f())})}</script><p class="description" data-astro-cid-kpaidhwy>Our C++ MMORPG&#39;s game rules move out of the world server into a library of their own, so the client can run them too. The world, with its monsters, NPCs, levels and trades, builds without a database or a network, and the code that turns a player&#39;s inputs into the world&#39;s actions, and the world into what each player is shown, moves out of the server into two parts of that library, with tests of their own, while the server&#39;s older tests say it behaves as it did. This is episode 77 of a series about building an MMORPG from scratch in C++, with the focus on the engineering around the game.</p><p class="topics muted" data-astro-cid-kpaidhwy>Topics: <a href="/episodes/?topic=testing" data-astro-cid-kpaidhwy>Testing</a>, <a href="/episodes/?topic=gameplay" data-astro-cid-kpaidhwy>Gameplay</a></p><section aria-labelledby="code" data-astro-cid-kpaidhwy><h2 class="section-title" id="code" data-astro-cid-kpaidhwy>The code</h2><p class="muted" data-astro-cid-kpaidhwy>Each step on screen is a tag in <a href="https://github.com/nenuadrian/nanoMMO" data-astro-cid-kpaidhwy>the game&#39;s repository</a>. The code at the end of the episode is <a href="https://github.com/nenuadrian/nanoMMO/tree/ep077/end" data-astro-cid-kpaidhwy><code data-astro-cid-kpaidhwy>ep077/end</code></a>.</p><ol class="steps" data-astro-cid-kpaidhwy><li data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=127s" data-seek="127" data-astro-cid-kpaidhwy>2:07</a><span class="step" data-astro-cid-kpaidhwy><code data-astro-cid-kpaidhwy>ep077/step-1</code><span class="muted" data-astro-cid-kpaidhwy>The world as a library</span></span><span class="links" data-astro-cid-kpaidhwy><a href="https://github.com/nenuadrian/nanoMMO/tree/ep077/step-1" data-astro-cid-kpaidhwy>Browse</a><a href="https://github.com/nenuadrian/nanoMMO/compare/ep076/end...ep077/step-1" data-astro-cid-kpaidhwy>Changes</a></span></li><li data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=206s" data-seek="206" data-astro-cid-kpaidhwy>3:26</a><span class="step" data-astro-cid-kpaidhwy><code data-astro-cid-kpaidhwy>ep077/step-2</code><span class="muted" data-astro-cid-kpaidhwy>What each player is shown</span></span><span class="links" data-astro-cid-kpaidhwy><a href="https://github.com/nenuadrian/nanoMMO/tree/ep077/step-2" data-astro-cid-kpaidhwy>Browse</a><a href="https://github.com/nenuadrian/nanoMMO/compare/ep077/step-1...ep077/step-2" data-astro-cid-kpaidhwy>Changes</a></span></li><li data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=671s" data-seek="671" data-astro-cid-kpaidhwy>11:11</a><span class="step" data-astro-cid-kpaidhwy><code data-astro-cid-kpaidhwy>ep077/step-3</code><span class="muted" data-astro-cid-kpaidhwy>What each player&#39;s inputs do</span></span><span class="links" data-astro-cid-kpaidhwy><a href="https://github.com/nenuadrian/nanoMMO/tree/ep077/step-3" data-astro-cid-kpaidhwy>Browse</a><a href="https://github.com/nenuadrian/nanoMMO/compare/ep077/step-2...ep077/step-3" data-astro-cid-kpaidhwy>Changes</a></span></li><li data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=1161s" data-seek="1161" data-astro-cid-kpaidhwy>19:21</a><span class="step" data-astro-cid-kpaidhwy><code data-astro-cid-kpaidhwy>ep077/end</code><span class="muted" data-astro-cid-kpaidhwy>Writing it down</span></span><span class="links" data-astro-cid-kpaidhwy><a href="https://github.com/nenuadrian/nanoMMO/tree/ep077/end" data-astro-cid-kpaidhwy>Browse</a><a href="https://github.com/nenuadrian/nanoMMO/compare/ep077/step-3...ep077/end" data-astro-cid-kpaidhwy>Changes</a></span></li></ol></section><section aria-labelledby="transcript" data-astro-cid-kpaidhwy><details class="transcript" open data-astro-cid-kpaidhwy><summary data-astro-cid-kpaidhwy><h2 class="section-title" id="transcript" data-astro-cid-kpaidhwy>Transcript</h2></summary><h3 data-astro-cid-kpaidhwy>Intro</h3><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc" data-seek="0" data-astro-cid-kpaidhwy>0:00</a> A wet, dark evening on campus, with leaves all over the paths, so the perfect excuse to stay in with a cup of tea and write some code!</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=11s" data-seek="11" data-astro-cid-kpaidhwy>0:11</a> Hello, and welcome back to episode seventy-seven, where we&#39;re going to move the game&#39;s rules out of the world server and into a library of their own, which the client can run as well. It&#39;s the step before playing without a server, so first, a quick look at where it takes us next time.</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=27s" data-seek="27" data-astro-cid-kpaidhwy>0:27</a> Next time, the browser starts straight into the world, with the monsters and the NPCs from the content, and no server anywhere, by running the server&#39;s own rules inside the page. Today is the work that makes that possible.</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=39s" data-seek="39" data-astro-cid-kpaidhwy>0:39</a> As usual, the game&#39;s code is open source, on GitHub, linked from the series&#39; website, with a page for each episode, where you can browse its code at each step.</p><h3 data-astro-cid-kpaidhwy>Last time</h3><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=48s" data-seek="48" data-astro-cid-kpaidhwy>0:48</a> Last time, the client went into a web browser. A web preset builds it with Emscripten, as WebAssembly, with protoc built for the computer, as one built as WebAssembly couldn&#39;t run there, and the code that reaches the servers went behind two interfaces, a link and the servers. Then came three things a browser does differently. Asyncify lets the main loop hand the browser its turns, our shaders load as GLSL ES three hundred, and the trees&#39; colours read back as RGBA. So the login screen draws in a tab, with nowhere to log in to, as a page can&#39;t reach our servers.</p><h3 data-astro-cid-kpaidhwy>Today</h3><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=85s" data-seek="85" data-astro-cid-kpaidhwy>1:25</a> The world&#39;s rules live in the world server&#39;s library, beside MySQL, Redis, Consul and the metrics, none of which a browser has. So first, the world, with its trades, becomes a library of its own. Then two parts of the server&#39;s code move into it: what each player is shown of the world each tick, and what each player&#39;s inputs do to it. The server keeps using them, through the library, so a world server and a client that runs a world share one set of rules, and a change to the rules reaches both. I&#39;m quite a fan of this kind of change. There&#39;s nothing new to see on screen, but the next episode gets a lot easier. Right, let&#39;s get started, with the world&#39;s new library.</p><h3 data-astro-cid-kpaidhwy>The world as a library</h3><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=127s" data-seek="127" data-astro-cid-kpaidhwy>2:07</a> We start in the server&#39;s CMake file, with a new library, nanommo world, for the world&#39;s rules. It takes the world, the trades from episodes seventy-four and seventy-five, the monsters, the NPCs, their levels, and interest, which works out who&#39;s near whom. Over the library goes what it&#39;s for: the world&#39;s rules, which need no database or network, so the client can run them too. Its headers are found from the top of the project, as the rest of ours are. Its links say what those files need: the bag&#39;s rules, walking, the protocol, the content and the terrain, with Abseil&#39;s status and strings. None of the server&#39;s databases, sockets or metrics are in there. I like that the CMake file says this out loud, as a change that drags MySQL into the world&#39;s code would have to come through here, where a reviewer can see it. The world&#39;s code marks zones for Tracy, our profiler. Those zones compile to nothing without Tracy enable defined, so in the web build, the world takes Tracy&#39;s header alone, before the server folder stops for the browser. On a computer, the world links Tracy&#39;s client, as the server&#39;s library did. Then the server&#39;s library loses the six files, and links the world&#39;s library in their place. In the top CMake file, fetching Tracy moves up, above the line where the browser&#39;s build leaves out the servers&#39; libraries, so the web build has its header too.</p><h3 data-astro-cid-kpaidhwy>What each player is shown</h3><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=207s" data-seek="207" data-astro-cid-kpaidhwy>3:27</a> What a player is shown each tick was built in the server, from the world as the server holds it, partly in functions kept private to the server&#39;s code, and partly in the middle of the code that sends it. A new header file in the world&#39;s library, called shown, has them as functions of the world alone, which anything that runs a world can call. It brings in c std int and optional from the standard library, then our protocol, for the messages, and the world, for the players, monsters and NPCs that go into them. First, we write who this header is for: whoever runs a world, a world server, or a client that plays on its own. To protocol turns a motion, such as walking, running or attacking, into the protocol&#39;s, and a player into what the protocol sends of them, by their id, and a monster as well, and last of all, an NPC. Then there&#39;s you in, which is what a player&#39;s own client is told about them each tick, beside the world near them. It takes the player and their id, the seed of the land&#39;s ground, the land, and the last of their numbered inputs that&#39;s been applied, if there&#39;s one. That last one is what the client&#39;s prediction from episode sixty-eight needs, to know which of its inputs the world has used. Bag of and quests of make a player&#39;s bag and their quests, each as it goes out when it&#39;s changed. For players turns one of the world&#39;s events into what the players near it see, or nothing, for a kind they don&#39;t see, such as a quest taken, which goes to the analytics alone.</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=294s" data-seek="294" data-astro-cid-kpaidhwy>4:54</a> In shown&#39;s code, we bring in chrono, c std int and optional, and the levels, for a player&#39;s level. The bodies move here from the server&#39;s code as they were, so what a player is shown doesn&#39;t change at all. A motion maps onto the protocol&#39;s in a switch, with a case for each of the world&#39;s motions, and each case returns the protocol&#39;s motion of that name. Each case is a single return, from the world&#39;s name for the motion to the protocol&#39;s. Idle breaks out of the switch to the return at the end, in place of a default case, so the compiler still warns us if the world ever gets a motion that the switch hasn&#39;t covered. A player in the protocol has their id, where they are, their name, which way they face, and their motion. Their level comes from their experience, then their health and the most health they can have, the weapon in their main hand, and each item they wear, so the other clients can draw their gear. While they&#39;re using a skill, it says which, on whom, and how many they&#39;ve started, so a client can tell one cast from the next, such as a swing held down. A monster in the protocol has its id and its kind, so the client knows which model to draw, then where it is and which way it&#39;s facing. After those come its motion, its level, its health and the most health it can have, and last of all, how tall it is. The simplest of the three is an NPC, with its id, its kind, where it stands, and which way it faces, as an NPC hasn&#39;t got a level or any health to show. You in is the biggest of these, as it has the most to say. It starts from the level for the player&#39;s experience, which holds this level&#39;s numbers and the next one&#39;s. Then it puts in who they are, by their id, their experience into this level, and the experience the next one takes. Each skill&#39;s cooldown goes in as the milliseconds left, as a whole number, and after the cooldowns, the skills the player knows. A dead player hears how long it is until they rise again, in milliseconds as well. Then come the ground&#39;s seed, which the client makes the land&#39;s ground from, and the land. Next, the last numbered input applied, when there&#39;s one. Then comes whether the world steered them this tick, along a walk, up to a monster or with a skill, so their keys didn&#39;t move them. And where they are, with that input applied, goes in each time, without what the world sends now and then: their name, their level, their most health and their weapon. That way, the input and where it took them always come together, whichever part of the world has the player otherwise. Bag of copies the bag&#39;s items into a world message of its own. Quests of puts in the quests they&#39;re on, with their progress, and then the quests they&#39;ve done. Last, it puts in the quests&#39; revision, so the client can tell that what it&#39;s been sent is newer than what it has. For players starts from the player the event is about, and its amount, then switches on the event&#39;s kind. A hit also says which monster it landed on, so the client knows where to show it. A hurt&#39;s amount is the damage they took, and a heal&#39;s is the health they got back. For a level, the amount becomes the level the player reached. The other kinds, the kills, deaths, loot, prizes, quests taken or turned in, and items used, go to the analytics. So the players near them aren&#39;t sent anything for those, and for players returns nothing, as it does after the switch, for any value the switch doesn&#39;t list.</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=494s" data-seek="494" data-astro-cid-kpaidhwy>8:14</a> Turning an event into what the players near it see was in events, which keeps the events the world records, for the analytics. So it leaves events&#39; header file, and its body goes from events&#39; code, where it sat under for analytics. In the server, we include shown, and the code it had for all of this moves out: the four to protocol functions go from the top of the file. Where the server broadcasts a copy of a land, the thirty or so lines that built each player&#39;s own part of the world become a call to you in. It passes the last numbered input the server applied for them, if there&#39;s one. Then sending the bag calls bag of, where it built its own message, and sending the quests calls quests of. Nothing about what goes out has changed, as each of these builds what the server built before. The server&#39;s older tests check what it sends, so they&#39;ll tell us if anything did.</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=549s" data-seek="549" data-astro-cid-kpaidhwy>9:09</a> Next, a couple of quick tests of what&#39;s in shown, in a new file of tests beside it, which brings in optional, Google Test, our protocol and the world. The first test makes a player, standing at two, minus one, who knows skill number three. Then it asks you in for that player&#39;s part, as player seven, with the seed ninety-nine, in land one, and with input number twelve the last one applied. They&#39;re told who they are, the seed, the land and the input, and their one skill. Where they are comes with it, as the one player in the list, without what the world sends now and then, such as their name or their level. So the test checks they&#39;re at two across, and that their name is empty, which is how we check what&#39;s been left out. And when we ask again without an input, acked stays at zero, as before any numbered input&#39;s been applied, there&#39;s none to say. The second test is the events&#39; test, which moves here along with the function it checks. A hit from player three on monster nine, for fifteen, comes through as a hit, and it shows the player, the monster and the damage they did, each checked against what went in. Then the test asks for players again, with a second event, a level, for player three getting to level seven, and this time there&#39;s no monster in it. It comes through as a level event, which the players near them see too, and its amount is the level reached, seven. And last, a quest taken isn&#39;t shown to anyone at all, so for players gives nothing back for it, and the test expects no value at all. So that test leaves the events&#39; tests, where it was. In the CMake file, the world&#39;s library gets shown, with its files on a line of their own now that the list&#39;s longer, and shown&#39;s tests build with the server&#39;s.</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=650s" data-seek="650" data-astro-cid-kpaidhwy>10:50</a> Let&#39;s build at this step and run them, without the databases, as neither of them needs MySQL or Redis. The build takes a little while, as Docker compiles the server and its tests in the tests&#39; image. A player&#39;s own part comes with the last input applied, the blows are shown and the quests aren&#39;t, and both pass.</p><h3 data-astro-cid-kpaidhwy>What each player&#39;s inputs do</h3><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=671s" data-seek="671" data-astro-cid-kpaidhwy>11:11</a> The other half is what a player&#39;s inputs do. Since episode sixty-eight, the server has kept a queue of each player&#39;s numbered inputs, and applied one a tick, with limits that keep the queue from falling too far behind the player&#39;s keys. All of it moves into a class of its own, in a new header file called inputs, with its limits beside it, so the reasons stay with the numbers. It brings in c std def, c std int, deque, functional, limits, map and optional, then Abseil&#39;s status, our protocol and the world. Inputs is what each player&#39;s inputs do to the world, whoever runs it. A numbered input&#39;s keys wait for their tick, so the client knows which tick each of its inputs moved it in. Most queued, five, is how many can wait. A client sends an input a tick, so a few queue up when the network holds some back and then lets them through together. Past five, the oldest go, so a player doesn&#39;t fall further and further behind. Most behind is three, as a slow frame on the client sends two or three at once, which is a client a little ahead of our tick. More than that means we&#39;re behind it, so each tick skips one, until we&#39;ve caught up. And most steady, with twenty steady ticks, is the drain we added in episode sixty-eight. Inputs come in as fast as they go out, so a queue that a burst filled stays that full, each input late by a tick for each one ahead of it. If two or more waited at the start of each tick for a second, the queue has kept more than it needs, and it drops one, until one waiting is the most it keeps for long. Take takes an input&#39;s keys, as they arrive from the client. A numbered input&#39;s keys wait for their tick, and the others are set at once, unless the player numbers theirs, when one without a number is a copy of the last, sent along with something else. Apply hands each player their next waiting keys, a tick&#39;s worth, in their land, which a function finds from the player&#39;s id. That&#39;s because a server has a world for each open land, and one for each player&#39;s copy of a dungeon. Acked is the last of a player&#39;s numbered inputs that&#39;s been applied, if any, and leave, which the server calls as they go, forgets a player who&#39;s left. In private, steady is a small struct with the fewest of a player&#39;s inputs waiting at the start of a tick, and the ticks since their queue was last checked. The fewest starts at the largest size, so that any real count is fewer. Then come each player&#39;s queue, the last input applied, and their steady, by the player&#39;s id. And outside the class, do item takes the player&#39;s land, their id and an item action. It moves, uses or throws away the item, as the action asks, or says why not, in words for the player, which the server passes on to them.</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=832s" data-seek="832" data-astro-cid-kpaidhwy>13:52</a> In the inputs&#39; code, we bring in algorithm, for min, then c std int, deque, functional and optional, and Abseil&#39;s status. The bodies are the server&#39;s, moved, with its maps now the class&#39;s own. A numbered input is one whose sequence isn&#39;t zero, and take puts it at the back of the player&#39;s queue, making their queue the first time they send one. It drops the oldest when more than most queued are waiting. Keys without a number go to the world at once, the direction, running, attacking and the target picked, unless the player has a queue, as a client that numbers its keys has sent the real ones already. Apply goes through each player&#39;s queue in turn. It notes the fewest waiting at the start of this tick, even when there are none. On each twentieth tick, it decides whether to drain, which it does if the fewest was two or more for the whole second, and then it starts counting again. It finds the player&#39;s land, and moves on when there&#39;s nothing waiting, or no land to apply the keys in. It skips one when more than most behind are waiting, or when it&#39;s draining. A skipped input counts as applied, and the client corrects the step it walked for it. Draining needs two waiting, so there&#39;s always one left to apply. Then the front input&#39;s keys go to the world, the input becomes the last applied, and it leaves the queue. Acked looks the player up in the map of last inputs applied, and returns an empty optional for one without an input applied yet. Leave goes through all three of the maps, and erases the player from each, their queue, their steady and their last input, so a player who comes back starts afresh. And do item is the switch the server had, on which action the client asked for. A move takes the places from and to, and how many to move, and the world does the moving. A use takes the place of what&#39;s used, and so does throwing something away. Each of them is the world&#39;s own call, so the world&#39;s checks still say no where they should, such as to a place that&#39;s held in a trade.</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=948s" data-seek="948" data-astro-cid-kpaidhwy>15:48</a> In the server&#39;s header file, the queue&#39;s maps and the steady struct go, and a member of the inputs class takes their place, with a shorter comment. In the server, we include inputs, and the limits leave the top of the file, as they&#39;re the class&#39;s now. Where an input arrives, once the server has found the player&#39;s land and read the message, it goes to take, with that land. A player who leaves is forgotten by the inputs too, and an item action goes through do item, after the server&#39;s limit on how fast things can be moved. Each tick, the server has the inputs applied, with world of to find the world each player is in. The function is a lambda that captures the server, so that the inputs can ask it for a player&#39;s world, without knowing anything else about servers or their copies. And where it builds a player&#39;s own part of the world, it asks the inputs for the last one applied, in place of looking it up in its own map.</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=1002s" data-seek="1002" data-astro-cid-kpaidhwy>16:42</a> Now, let&#39;s pin the inputs down with a few tests of their own, in a new file that brings in c std int, Google Test, our protocol and the world. At the top, a helper called keys makes an input with a sequence number, and a direction across, which is all these tests need. First, a test that numbered keys wait for their tick. A player joins a world, as player seven, and the inputs take an input numbered one, with its keys pointing across. The player&#39;s keys haven&#39;t changed yet, and nothing&#39;s acked. After a tick&#39;s apply, the keys are the input&#39;s, and input one is acked, and once the player leaves, there&#39;s nothing acked any more. Next, keys without a number go at once, so after the player takes one pointing across, their keys change straight away, without waiting for a tick. Then a numbered input comes, and after it, one without a number, pointing the other way. A client that numbers its keys sends a copy of its last keys with anything else it sends, such as a line of chat, and that copy mustn&#39;t jump ahead of the queue. The one without a number changes nothing, as it&#39;s a copy of the last, and the keys stay as they were until the next tick applies the numbered input&#39;s. And last, a test of the drain, with the case it was added for in episode sixty-eight. The player joins as before, and a sequence number starts at zero. Three inputs come at once, and then one a tick, as a client keeps up after a slow frame, so two wait behind each new one, each a tick late for each of them. Each tick applies one and takes the next, for three seconds&#39; worth of ticks, which gives the queue time to notice, and drain what the burst left in it, one at a time. So by the end, the next tick applies the newest input sent, and not one from a few ticks ago, which would have kept the player&#39;s keys a couple of ticks behind for as long as the queue stayed full. In the CMake file, inputs joins the world&#39;s library, and its tests build beside the shown ones.</p><h3 data-astro-cid-kpaidhwy>The server, as before</h3><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=1115s" data-seek="1115" data-astro-cid-kpaidhwy>18:35</a> Let&#39;s build it and run the new tests, along with the server&#39;s own tests, this time with MySQL, Redis and Consul up in Docker. The server&#39;s tests start a real server, which loads and saves its players through MySQL and Redis, and they&#39;re what says the server still behaves as it did. Out of what they print, grep keeps the lines we care about here: the inputs&#39; tests, the server&#39;s two drain tests and the total. It takes a little while, as the stack comes up and the server builds. The inputs&#39; tests pass, the drain among them, and so do the server&#39;s drain tests from episode sixty-eight, along with the rest of its tests. So as far as the server&#39;s tests can tell, moving the rules into a library changed nothing it does.</p><h3 data-astro-cid-kpaidhwy>Writing it down</h3><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=1161s" data-seek="1161" data-astro-cid-kpaidhwy>19:21</a> Last, the game&#39;s docs, where the worlds page gets a section on the world&#39;s library. It says what&#39;s in it, the world with its players, monsters, NPCs, levels and trades, who&#39;s near whom, what each player is shown and what their inputs do. And it says the world server links it, with MySQL, Redis, Consul and the rest around it. Then a table for each of the two new parts, with shown&#39;s functions and what each one is for, and then the inputs&#39; class and do item.</p><h3 data-astro-cid-kpaidhwy>Wrap-up</h3><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=1193s" data-seek="1193" data-astro-cid-kpaidhwy>19:53</a> Today, the world&#39;s rules, with the trades, became a library of their own, which needs no database or network. What each player is shown and what their inputs do moved out of the server and into it, with tests of their own, and the server runs its worlds through them, with its older tests passing as they did. Next time, the client runs that library on its own, and we play without a server, in the browser too.</p><h3 data-astro-cid-kpaidhwy>Playing it</h3><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=1269s" data-seek="1269" data-astro-cid-kpaidhwy>21:09</a> Let me know in the comments what you&#39;d like to see next, and if you want to follow along with the series, subscribe to the channel. I hope you find this useful, and thanks for watching.</p></details></section></main><aside aria-labelledby="chapters" data-astro-cid-kpaidhwy><div class="mini-slot" data-mini-slot data-astro-cid-kpaidhwy></div><h2 class="section-title" id="chapters" data-astro-cid-kpaidhwy>Chapters</h2><ol class="chapters" data-astro-cid-kpaidhwy><li data-astro-cid-kpaidhwy><a href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc" data-seek="0" class="astro-kpaidhwy" data-astro-cid-kpaidhwy><span class="time" data-astro-cid-kpaidhwy>0:00</span><span data-astro-cid-kpaidhwy>Intro</span></a></li><li data-astro-cid-kpaidhwy><a href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=48s" data-seek="48" class="astro-kpaidhwy" data-astro-cid-kpaidhwy><span class="time" data-astro-cid-kpaidhwy>0:48</span><span data-astro-cid-kpaidhwy>Last time</span></a></li><li data-astro-cid-kpaidhwy><a href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=85s" data-seek="85" class="astro-kpaidhwy" data-astro-cid-kpaidhwy><span class="time" data-astro-cid-kpaidhwy>1:25</span><span data-astro-cid-kpaidhwy>Today</span></a></li><li data-astro-cid-kpaidhwy><a href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=127s" data-seek="127" class="astro-kpaidhwy" data-astro-cid-kpaidhwy><span class="time" data-astro-cid-kpaidhwy>2:07</span><span data-astro-cid-kpaidhwy>The world as a library</span></a></li><li data-astro-cid-kpaidhwy><a href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=206s" data-seek="206" class="astro-kpaidhwy" data-astro-cid-kpaidhwy><span class="time" data-astro-cid-kpaidhwy>3:26</span><span data-astro-cid-kpaidhwy>What each player is shown</span></a></li><li data-astro-cid-kpaidhwy><a href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=671s" data-seek="671" class="astro-kpaidhwy" data-astro-cid-kpaidhwy><span class="time" data-astro-cid-kpaidhwy>11:11</span><span data-astro-cid-kpaidhwy>What each player&#39;s inputs do</span></a></li><li data-astro-cid-kpaidhwy><a href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=1114s" data-seek="1114" class="astro-kpaidhwy" data-astro-cid-kpaidhwy><span class="time" data-astro-cid-kpaidhwy>18:34</span><span data-astro-cid-kpaidhwy>The server, as before</span></a></li><li data-astro-cid-kpaidhwy><a href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=1161s" data-seek="1161" class="astro-kpaidhwy" data-astro-cid-kpaidhwy><span class="time" data-astro-cid-kpaidhwy>19:21</span><span data-astro-cid-kpaidhwy>Writing it down</span></a></li><li data-astro-cid-kpaidhwy><a href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=1192s" data-seek="1192" class="astro-kpaidhwy" data-astro-cid-kpaidhwy><span class="time" data-astro-cid-kpaidhwy>19:52</span><span data-astro-cid-kpaidhwy>Wrap-up</span></a></li><li data-astro-cid-kpaidhwy><a href="https://www.youtube.com/watch?v=a0nbUIQ_3Wc&amp;t=1217s" data-seek="1217" class="astro-kpaidhwy" data-astro-cid-kpaidhwy><span class="time" data-astro-cid-kpaidhwy>20:17</span><span data-astro-cid-kpaidhwy>Playing it</span></a></li></ol></aside></div><nav class="wrap pager" aria-label="Episodes" data-astro-cid-kpaidhwy><a class="prev" href="/ep076-client-in-browser/" data-astro-cid-kpaidhwy><span class="muted" data-astro-cid-kpaidhwy>← Episode 76</span><span data-astro-cid-kpaidhwy>Running my C++ MMORPG in a web browser with WebAssembly</span></a><a class="next" href="/ep078-offline-play/" data-astro-cid-kpaidhwy><span class="muted" data-astro-cid-kpaidhwy>Episode 78 →</span><span data-astro-cid-kpaidhwy>Playing my C++ MMORPG offline in a browser, without a server</span></a></nav><script type="module" src="/_astro/Base.astro_astro_type_script_index_0_lang.uHA48Xs6.js"></script><footer class="foot" data-astro-cid-hkbrpulz><div class="wrap foot-cols" data-astro-cid-hkbrpulz><div class="foot-about" data-astro-cid-hkbrpulz><a class="brand" href="/" data-astro-cid-hkbrpulz>nanoMMO</a><p data-astro-cid-hkbrpulz>A devlog where I build an MMO from scratch in C++, with the engineering and the hard parts out in the open.</p><a class="subscribe" href="https://www.youtube.com/@adrian-m-nenu?sub_confirmation=1" data-astro-cid-hkbrpulz><svg viewBox="0 0 8 6" aria-hidden="true" shape-rendering="crispEdges" data-astro-cid-hkbrpulz><path d="M1 0h6v1h1v4h-1v1h-6v-1h-1v-4h1zM3 1.5v3l2.5-1.5z" fill-rule="evenodd" data-astro-cid-hkbrpulz></path></svg>Subscribe on YouTube</a></div><nav aria-labelledby="foot-explore" data-astro-cid-hkbrpulz><p class="foot-h" id="foot-explore" data-astro-cid-hkbrpulz>Explore</p><ul data-astro-cid-hkbrpulz><li data-astro-cid-hkbrpulz><a href="/" data-astro-cid-hkbrpulz>Home</a></li><li data-astro-cid-hkbrpulz><a href="/episodes/" data-astro-cid-hkbrpulz>Episodes</a></li><li data-astro-cid-hkbrpulz><a href="/start/" data-astro-cid-hkbrpulz>Get started</a></li><li data-astro-cid-hkbrpulz><a href="/about/" data-astro-cid-hkbrpulz>About</a></li><li data-astro-cid-hkbrpulz><a href="/rss.xml" data-astro-cid-hkbrpulz>RSS feed</a></li></ul></nav><nav aria-labelledby="foot-links" data-astro-cid-hkbrpulz><p class="foot-h" id="foot-links" data-astro-cid-hkbrpulz>Resources</p><ul data-astro-cid-hkbrpulz><li data-astro-cid-hkbrpulz><a href="https://www.youtube.com/@adrian-m-nenu" data-astro-cid-hkbrpulz>YouTube</a></li><li data-astro-cid-hkbrpulz><a href="https://github.com/nenuadrian/nanoMMO" data-astro-cid-hkbrpulz>The game on GitHub</a></li><li data-astro-cid-hkbrpulz><a href="https://nenuadrian.github.io/nanoMMO/" data-astro-cid-hkbrpulz>API docs</a></li><li data-astro-cid-hkbrpulz><a href="https://github.com/nenuadrian/nanoMMO/tree/main/docs/decisions" data-astro-cid-hkbrpulz>Decision records</a></li></ul></nav><nav aria-labelledby="foot-series" data-astro-cid-hkbrpulz><p class="foot-h" id="foot-series" data-astro-cid-hkbrpulz>Series</p><ul data-astro-cid-hkbrpulz><li data-astro-cid-hkbrpulz><a href="/" aria-current="page" class="here" data-astro-cid-hkbrpulz>nanoMMO</a></li><li data-astro-cid-hkbrpulz><a href="https://mvgpt.nenuadrian.com" data-astro-cid-hkbrpulz>mvGPT</a></li><li data-astro-cid-hkbrpulz><a href="https://smollergraph.nenuadrian.com" data-astro-cid-hkbrpulz>smollerGraph</a></li></ul></nav></div></footer></body></html>

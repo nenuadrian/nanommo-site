@@ -4,11 +4,11 @@
   "description": "A devlog where I build an MMO from scratch in C++, with the engineering and the hard parts out in the open.",
   "cover": "https://nanommo.nenuadrian.com/cover.webp?v=1eb3f4a32f",
   "url": "https://nanommo.nenuadrian.com/",
-  "episodes": 80,
-  "hours": 52.1,
+  "episodes": 87,
+  "hours": 56.4,
   "latest": {
-    "title": "Weather effects and ambient sound in a C++ MMORPG",
-    "url": "https://nanommo.nenuadrian.com/ep086-fire-rain-fireflies-sound/",
-    "thumb": "https://nanommo.nenuadrian.com/thumbs/ep086-fire-rain-fireflies-sound.webp"
+    "title": "Adding factions to an MMORPG",
+    "url": "https://nanommo.nenuadrian.com/ep097-factions/",
+    "thumb": "https://nanommo.nenuadrian.com/thumbs/ep097-factions.webp"
   }
 }

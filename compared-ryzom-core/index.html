@@ -1,0 +1,312 @@
+<!DOCTYPE html><html lang="en-GB" data-astro-cid-hkbrpulz><head><script async src="https://www.googletagmanager.com/gtag/js?id=G-35TS0K7JQH"></script><script>window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', "G-35TS0K7JQH");</script><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>MMO server architecture in Ryzom Core and nanoMMO | nanoMMO Devlog | nanoMMO</title><meta name="description" content="Ryzom Core's code next to ours, from the tick to saving a character, and the constraints behind each choice."><link rel="canonical" href="https://nanommo.nenuadrian.com/compared-ryzom-core/"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="alternate" type="application/rss+xml" title="nanoMMO" href="/rss.xml"><link rel="sitemap" href="/sitemap.xml"><meta name="theme-color" content="#0b0507"><meta property="og:site_name" content="nanoMMO"><meta property="og:type" content="video.episode"><meta property="og:title" content="MMO server architecture in Ryzom Core and nanoMMO | nanoMMO Devlog"><meta property="og:description" content="Ryzom Core's code next to ours, from the tick to saving a character, and the constraints behind each choice."><meta property="og:url" content="https://nanommo.nenuadrian.com/compared-ryzom-core/"><meta property="og:locale" content="en_GB"><meta property="og:image" content="https://nanommo.nenuadrian.com/thumbs/compared-ryzom-core.116ec9cf08.jpg"><meta property="og:image:alt" content="MMO server architecture in Ryzom Core and nanoMMO | nanoMMO Devlog"><meta name="twitter:card" content="summary_large_image"><style>:root{--bg:#0b0507;--bg-rgb:11 5 7;--surface:#150608;--surface-2:#21070b;--line:#33090f;--shadow:#4c0b14;--text:#f3e9dc;--heading:#ffffff;--prose:#e4d7cc;--muted:#b49f98;--faint:#917773;--ember:#ff5a3c;--ember-2:#ffa04a;--on-ember:#150608;--code:#4FC1FF;--font-display:"Jersey 15", var(--font-ui);--font-ui:"Inter", -apple-system, 'Helvetica Neue', sans-serif;--font-mono:"JetBrains Mono", Menlo, monospace;--font-hand:"Caveat", 'Comic Sans MS', cursive}</style><style>/* nanoMMO's site on top of aphrodite's: the pixel look's colours, and the game's own interface
+   (client/theme.h): the faces it's set in, Cinzel for titles in carved gold capitals and Alegreya
+   Sans for what's read, and its panels, dark, with their corners cut, a red glow under the title,
+   trimmed in brass with a thin light inside. The home page's dev log
+   and Design choices (site/components/) are made of these; the rest of the site wears them too. */
+@import url('https://fonts.googleapis.com/css2?family=Alegreya+Sans:wght@400;500;700&family=Cinzel:wght@700&display=swap');
+
+:root {
+  --heading: #f3e9dc;
+  --prose: #e6d8ca;
+  --muted: #b5a297;
+  --faint: #8f7b70;
+  --on-ember: #1a0a0c;
+  --font-ui: 'Alegreya Sans', system-ui, sans-serif;
+  --font-title: 'Cinzel', Georgia, serif;
+  /* The interface's colours, as client/theme.h has them. */
+  --night: #0b0507;
+  --coal: #1e0e11;
+  --wine: #4c0b14;
+  --crimson: #94121f;
+  --gold: #ffd34d;
+  --gold-light: #fff3c4;
+  --gold-dark: #c98a12;
+  --brass: #8a6226;
+  --good: #7ed670;
+  --cut: 10px;
+}
+
+body {
+  font-size: 1.06rem;
+}
+
+/* A title in carved gold capitals, as the game's windows have. */
+.section-title,
+.hud-title {
+  font-family: var(--font-title);
+  font-weight: 700;
+  font-size: clamp(1.45rem, 2.6vw, 1.9rem);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  background: linear-gradient(180deg, var(--gold-light) 0%, var(--gold) 45%, var(--gold-dark) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 0 rgb(0 0 0 / 0.85));
+}
+
+/* Under a title: a line that fades in from its ends, with a diamond in its middle. */
+.hud-rule {
+  position: relative;
+  height: 1px;
+  margin: 10px 0 0;
+  background: linear-gradient(90deg, transparent, var(--brass) 20%, var(--gold-dark) 50%, var(--brass) 80%, transparent);
+}
+.hud-rule::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 9px;
+  height: 9px;
+  background: var(--gold);
+  border: 1px solid var(--night);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+/* A panel: brass behind, the dark inside it a pixel in, both with their corners cut, a red glow
+   under the top, a fine grain, and a bevel: light along the top inside, shade along the bottom.
+   Clipping takes the outline round the cuts. */
+.hud,
+.step,
+.topic,
+.card {
+  position: relative;
+  isolation: isolate;
+  border: 0 !important;
+  background: var(--brass) !important;
+  clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 calc(100% - var(--cut)), 0 var(--cut));
+  transition: background-color 120ms ease;
+}
+.hud::before,
+.step::before,
+.topic::before,
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  z-index: -1;
+  clip-path: polygon(calc(var(--cut) - 0.5px) 0, calc(100% - var(--cut) + 0.5px) 0, 100% calc(var(--cut) - 0.5px), 100% calc(100% - var(--cut) + 0.5px), calc(100% - var(--cut) + 0.5px) 100%, calc(var(--cut) - 0.5px) 100%, 0 calc(100% - var(--cut) + 0.5px), 0 calc(var(--cut) - 0.5px));
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.92 0 0 0 0 0.85 0 0 0 0.055 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 70% 46px at 50% 0, rgb(148 18 31 / 0.5), transparent 100%),
+    linear-gradient(180deg, var(--coal), var(--night));
+  box-shadow:
+    inset 0 0 0 1px rgb(255 243 196 / 0.07),
+    inset 0 1px 0 1px rgb(255 243 196 / 0.08),
+    inset 0 -24px 36px -12px rgb(0 0 0 / 0.45);
+}
+a.hud:hover,
+.topic:hover,
+.card:hover {
+  background: var(--gold-dark) !important;
+}
+.card {
+  box-shadow: none !important;
+  z-index: 0;
+}
+.card .thumb {
+  margin: 1px 1px 0;
+}
+
+/* The home page's Start here isn't nanoMMO's (Adrian, 2026-11-21): the hero's buttons and the bar's
+   Get started already say where to start. */
+section[aria-labelledby='start-here'] {
+  display: none;
+}
+
+/* Nor its Latest episodes (Adrian, 2026-11-22): the dev log below the hero has every one, newest
+   first, each with what it's about. */
+section[aria-labelledby='latest'] {
+  display: none;
+}
+
+/* The home page's topics three to a row, two on a narrower screen (aphrodite's phone layout keeps
+   its two); the episodes page's list of topics is left as it is. */
+#by-topic ~ .topics {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+@media (max-width: 960px) {
+  #by-topic ~ .topics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* The big numbers of Start here, as levels. */
+.step .n {
+  font-family: var(--font-title);
+  color: var(--gold);
+  font-size: 2.2rem;
+}
+.step h3,
+.topic-name {
+  font-family: var(--font-title);
+  letter-spacing: 0.04em;
+  color: var(--gold-light);
+}
+.topic-n {
+  color: var(--gold);
+}
+/* A topic card is its name and how many episodes it has, without their titles (Adrian,
+   2026-11-21). */
+#by-topic ~ .topics .topic-eps {
+  display: none;
+}
+#by-topic ~ .topics .topic {
+  justify-content: center;
+  padding-block: 20px;
+}
+
+/* A gold tab with the episode's level on it, as the thumbnails have. */
+.lv {
+  display: inline-block;
+  padding: 2px 8px 1px;
+  font-family: var(--font-title);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1.5;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--night);
+  background: linear-gradient(180deg, var(--gold-light), var(--gold) 55%, var(--gold-dark));
+  border: 1px solid var(--night);
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.7);
+  text-decoration: none;
+}
+a.lv:hover {
+  color: var(--night);
+  filter: brightness(1.12);
+}
+.lv.locked {
+  color: var(--faint);
+  background: var(--coal);
+  border-color: var(--brass);
+}
+
+/* The page behind it all: a warm near-black, a fine grain, a little of the fire's red at the top,
+   and the edges going darker, as the game's screen does. Fixed, so it stays put as the page moves. */
+body {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 0.9 0 0 0 0 0.82 0 0 0 0.045 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 120% 70% at 50% -10%, rgb(148 18 31 / 0.16), transparent 60%),
+    radial-gradient(ellipse 140% 100% at 50% 50%, transparent 55%, rgb(0 0 0 / 0.55) 100%),
+    #0c0608;
+  background-attachment: fixed;
+}
+
+/* Each section the same: its title centred, the line with a diamond under it, and the same room
+   above it. */
+.block {
+  padding-block: clamp(64px, 8vw, 104px) 0 !important;
+}
+.section-title {
+  display: block;
+  text-align: center;
+  margin: 0 0 32px !important;
+}
+.section-title::after {
+  content: '';
+  display: block;
+  width: min(760px, 100%);
+  height: 11px;
+  margin: 14px auto 0;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M6 0.8 11.2 6 6 11.2 0.8 6Z' fill='%23ffd34d' stroke='%230b0507' stroke-width='1'/%3E%3C/svg%3E") center / 11px 11px no-repeat,
+    linear-gradient(90deg, transparent, var(--brass) 20%, var(--gold-dark) 50%, var(--brass) 80%, transparent) center / 100% 1px no-repeat;
+}
+.head {
+  flex-direction: column;
+  align-items: center !important;
+  gap: 0 !important;
+}
+.head .section-title {
+  width: 100%;
+  margin-bottom: 14px !important;
+}
+.head .all {
+  margin-bottom: 26px;
+}
+
+/* Motion, kept small: cards and topics rise a little with a gold glow when pointed at, the dev
+   log's rows slide, its older episodes open smoothly, the nodes on its line catch the light now and
+   then, and sections rise into place as they scroll in. None of it for anyone who asks for less
+   motion. */
+:root {
+  interpolate-size: allow-keywords;
+}
+.cards > li,
+#by-topic ~ .topics > li {
+  transition:
+    transform 180ms ease,
+    filter 180ms ease;
+}
+.cards > li:hover,
+#by-topic ~ .topics > li:hover {
+  transform: translateY(-4px);
+  filter: drop-shadow(0 10px 18px rgb(255 160 74 / 0.16));
+}
+.devlog details::details-content {
+  block-size: 0;
+  overflow: hidden;
+  transition:
+    block-size 320ms ease,
+    content-visibility 320ms allow-discrete;
+}
+.devlog details[open]::details-content {
+  block-size: auto;
+}
+@keyframes glint {
+  0%,
+  90%,
+  100% {
+    filter: brightness(1);
+  }
+  94% {
+    filter: brightness(1.7) drop-shadow(0 0 6px rgb(255 211 77 / 0.9));
+  }
+}
+.devlog .entry:nth-child(4n + 1) .node {
+  animation: glint 7s ease-in-out infinite;
+}
+.devlog .entry:nth-child(8n + 1) .node {
+  animation-delay: 2.3s;
+}
+.devlog .entry:nth-child(12n + 1) .node {
+  animation-delay: 4.6s;
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+}
+@supports (animation-timeline: view()) {
+  .devlog .entry,
+  .choices .panel,
+  .cards > li,
+  #by-topic ~ .topics > li {
+    animation: rise linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 35%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cards > li,
+  #by-topic ~ .topics > li,
+  .devlog .entry,
+  .devlog .node,
+  .choices .panel,
+  .devlog details::details-content {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+</style><script type="application/ld+json">{"@context":"https://schema.org","@type":"VideoObject","name":"MMO server architecture in Ryzom Core and nanoMMO | nanoMMO Devlog","description":"A video that's a bit different: instead of adding to nanoMMO, we read Ryzom Core's code next to ours. Ryzom launched in 2004 and has been open source since 2010, and its servers split each world over about ten kinds of process, where ours runs a world in one. We go through the tick and the mirror service, who sees whom and the frontend's bandwidth budget, who decides where a player is, saving a character and what happens when a save fails, content as data and behaviour as script, and the ideas I'd take from them. Not a review: each project made its choices for its own reasons. Ryzom Core is AGPLv3 code with CC BY-SA 3.0 art, by Nevrax, Winch Gate and the Ryzom Core community; its screenshots here are from wiki.ryzom.dev.","thumbnailUrl":["https://nanommo.nenuadrian.com/thumbs/compared-ryzom-core.116ec9cf08.jpg"],"uploadDate":"2026-11-25","duration":"PT0H14M12S","embedUrl":"https://www.youtube.com/embed/Mww51XfTd5c","url":"https://www.youtube.com/watch?v=Mww51XfTd5c","hasPart":[{"@type":"Clip","name":"Intro","startOffset":0,"endOffset":51,"url":"https://www.youtube.com/watch?v=Mww51XfTd5c"},{"@type":"Clip","name":"Where Ryzom comes from","startOffset":51,"endOffset":191,"url":"https://www.youtube.com/watch?v=Mww51XfTd5c&t=51s"},{"@type":"Clip","name":"A world in ten processes","startOffset":191,"endOffset":286,"url":"https://www.youtube.com/watch?v=Mww51XfTd5c&t=191s"},{"@type":"Clip","name":"The tick","startOffset":286,"endOffset":380,"url":"https://www.youtube.com/watch?v=Mww51XfTd5c&t=286s"},{"@type":"Clip","name":"What each player is sent","startOffset":380,"endOffset":457,"url":"https://www.youtube.com/watch?v=Mww51XfTd5c&t=380s"},{"@type":"Clip","name":"Where a player is","startOffset":457,"endOffset":515,"url":"https://www.youtube.com/watch?v=Mww51XfTd5c&t=457s"},{"@type":"Clip","name":"Saving a character","startOffset":515,"endOffset":587,"url":"https://www.youtube.com/watch?v=Mww51XfTd5c&t=515s"},{"@type":"Clip","name":"What we share","startOffset":587,"endOffset":650,"url":"https://www.youtube.com/watch?v=Mww51XfTd5c&t=587s"},{"@type":"Clip","name":"Behaviour","startOffset":650,"endOffset":684,"url":"https://www.youtube.com/watch?v=Mww51XfTd5c&t=650s"},{"@type":"Clip","name":"What I'd take from them","startOffset":684,"endOffset":752,"url":"https://www.youtube.com/watch?v=Mww51XfTd5c&t=684s"},{"@type":"Clip","name":"Recap","startOffset":752,"endOffset":780,"url":"https://www.youtube.com/watch?v=Mww51XfTd5c&t=752s"},{"@type":"Clip","name":"Playing it","startOffset":780,"endOffset":852,"url":"https://www.youtube.com/watch?v=Mww51XfTd5c&t=780s"}]}</script><meta property="video:release_date" content="2026-11-25"><meta property="video:duration" content="852"><meta property="video:tag" content="mmo server architecture"><meta property="video:tag" content="ryzom"><meta property="video:tag" content="ryzom core"><meta property="video:tag" content="nel"><meta property="video:tag" content="nevrax"><meta property="video:tag" content="mmorpg architecture"><meta property="video:tag" content="game server"><meta property="video:tag" content="tick"><meta property="video:tag" content="shared memory"><meta property="video:tag" content="interest management"><meta property="video:tag" content="bandwidth"><meta property="video:tag" content="client authority"><meta property="video:tag" content="saving players"><meta property="video:tag" content="content as data"><meta property="video:tag" content="open source mmo"><meta property="video:tag" content="c++"><meta property="video:tag" content="mmorpg"><meta property="video:tag" content="mmo"><meta property="video:tag" content="gamedev"><meta property="video:tag" content="game development"><link rel="stylesheet" href="/_astro/_id_.Ty0vUL-Q.css"><link rel="stylesheet" href="/_astro/Base.4mH8VIvv.css"><style>@layer aphrodite{.player[data-astro-cid-g2mknjow]{aspect-ratio:16/9;border:1px solid var(--line);box-shadow:8px 8px 0 var(--surface-2);background:#000;position:relative}.player[data-astro-cid-g2mknjow].away:after{content:"In the mini player";font:.85rem var(--font-mono);color:var(--faint);place-items:center;display:grid;position:absolute;inset:0}.screen[data-astro-cid-g2mknjow],.frame[data-astro-cid-g2mknjow]{width:100%;height:100%}.frame[data-astro-cid-g2mknjow]{overflow:hidden}.frame[data-astro-cid-g2mknjow] iframe,.start[data-astro-cid-g2mknjow],.start[data-astro-cid-g2mknjow] img[data-astro-cid-g2mknjow]{border:0;width:100%;height:100%;display:block}.start[data-astro-cid-g2mknjow]{cursor:pointer;background:0 0;padding:0;position:relative}.start[data-astro-cid-g2mknjow] img[data-astro-cid-g2mknjow]{object-fit:cover}.screen[data-astro-cid-g2mknjow].docked{z-index:9;position:fixed}.docked[data-astro-cid-g2mknjow] .frame[data-astro-cid-g2mknjow]{border:1px solid var(--line);box-shadow:6px 6px 0 var(--shadow);background:#000}.screen[data-astro-cid-g2mknjow].corner{right:16px;bottom:calc(16px + env(safe-area-inset-bottom));aspect-ratio:16/9;width:min(58vw,340px);height:auto}.close[data-astro-cid-g2mknjow]{border:1px solid var(--line);background:var(--surface-2);width:26px;height:26px;color:var(--muted);cursor:pointer;padding:0;display:none;position:absolute;top:-12px;right:-12px}.close[data-astro-cid-g2mknjow]:hover{color:var(--ember-2);border-color:var(--ember)}.close[data-astro-cid-g2mknjow] svg{fill:currentColor;width:12px;height:12px;margin:auto;display:block}.docked[data-astro-cid-g2mknjow] .close[data-astro-cid-g2mknjow]{display:block}.corner[data-astro-cid-g2mknjow] .close[data-astro-cid-g2mknjow]{right:-6px}.docked[data-astro-cid-g2mknjow] .start[data-astro-cid-g2mknjow] .play{width:55px;height:40px}.start[data-astro-cid-g2mknjow] .play{width:88px;height:64px;color:var(--ember);filter:drop-shadow(6px 6px 0 var(--shadow));transition:color .12s;position:absolute;top:50%;left:50%;translate:-50% -50%}.start[data-astro-cid-g2mknjow]:hover .play,.start[data-astro-cid-g2mknjow]:focus-visible .play{color:var(--ember-2)}.draft[data-astro-cid-g2mknjow]{text-align:center;background:var(--bg) var(--field) center / cover;place-items:center;padding:24px;display:grid}.draft[data-astro-cid-g2mknjow] p[data-astro-cid-g2mknjow]{background:rgb(var(--bg-rgb) / .8);gap:12px;margin:0;padding:20px 28px;display:grid}.draft[data-astro-cid-g2mknjow] .display[data-astro-cid-g2mknjow]{font-size:clamp(2rem,6vw,4rem)}.draft[data-astro-cid-g2mknjow] p[data-astro-cid-g2mknjow]>span[data-astro-cid-g2mknjow]:last-child{color:var(--muted);font-family:var(--font-mono);font-size:.85rem}}
+</style></head><body data-palette="{&quot;field&quot;:[&quot;#0b0507&quot;,&quot;#150608&quot;,&quot;#21070b&quot;,&quot;#33090f&quot;,&quot;#4c0b14&quot;,&quot;#6c0e19&quot;,&quot;#94121f&quot;,&quot;#c41d29&quot;],&quot;ember&quot;:[&quot;#ff5a3c&quot;,&quot;#ffa04a&quot;]}" data-astro-cid-hkbrpulz><header class="bar" data-astro-cid-hkbrpulz><div class="wrap bar-inner" data-astro-cid-hkbrpulz><a class="brand" href="/" data-astro-cid-hkbrpulz>nanoMMO</a><div class="search" data-search data-astro-cid-hkbrpulz><form class="search-form" id="site-search" role="search" action="/" data-astro-cid-hkbrpulz><svg class="glass" viewBox="0 0 8 8" aria-hidden="true" shape-rendering="crispEdges" data-astro-cid-hkbrpulz><path d="M2 0h3v1h-3zM1 1h1v1h-1zM5 1h1v1h-1zM0 2h1v3h-1zM6 2h1v3h-1zM1 5h1v1h-1zM5 5h1v1h-1zM2 6h3v1h-3zM6 6h1v1h-1zM7 7h1v1h-1z" data-astro-cid-hkbrpulz></path></svg><input type="search" name="q" placeholder="Search episodes" aria-label="Search episodes" autocomplete="off" spellcheck="false" enterkeyhint="go" role="combobox" aria-expanded="false" aria-controls="search-results" aria-autocomplete="list" data-astro-cid-hkbrpulz><button type="button" class="search-close" aria-label="Close the search" data-astro-cid-hkbrpulz><svg viewBox="0 0 8 8" aria-hidden="true" shape-rendering="crispEdges"><path d="M1 1h1v1h-1zM2 2h1v1h-1zM3 3h2v2h-2zM5 2h1v1h-1zM6 1h1v1h-1zM2 5h1v1h-1zM1 6h1v1h-1zM5 5h1v1h-1zM6 6h1v1h-1z"></path></svg></button></form><ul class="results" id="search-results" role="listbox" aria-label="Episodes" hidden data-astro-cid-hkbrpulz></ul></div><button type="button" class="search-open" aria-label="Search" aria-expanded="false" aria-controls="site-search" data-astro-cid-hkbrpulz><svg class="glass" viewBox="0 0 8 8" aria-hidden="true" shape-rendering="crispEdges" data-astro-cid-hkbrpulz><path d="M2 0h3v1h-3zM1 1h1v1h-1zM5 1h1v1h-1zM0 2h1v3h-1zM6 2h1v3h-1zM1 5h1v1h-1zM5 5h1v1h-1zM2 6h3v1h-3zM6 6h1v1h-1zM7 7h1v1h-1z" data-astro-cid-hkbrpulz></path></svg></button><button type="button" class="menu" aria-expanded="false" aria-controls="site-nav" aria-label="Menu" data-astro-cid-hkbrpulz><svg class="open-icon" viewBox="0 0 8 7" aria-hidden="true" shape-rendering="crispEdges" data-astro-cid-hkbrpulz><path d="M0 0h8v1h-8zM0 3h8v1h-8zM0 6h8v1h-8z" data-astro-cid-hkbrpulz></path></svg><svg viewBox="0 0 8 8" aria-hidden="true" shape-rendering="crispEdges"><path d="M1 1h1v1h-1zM2 2h1v1h-1zM3 3h2v2h-2zM5 2h1v1h-1zM6 1h1v1h-1zM2 5h1v1h-1zM1 6h1v1h-1zM5 5h1v1h-1zM6 6h1v1h-1z"></path></svg></button><nav id="site-nav" aria-label="Site" data-astro-cid-hkbrpulz><a href="/" data-astro-cid-hkbrpulz>Home</a><a class="episodes" href="/episodes/" data-astro-cid-hkbrpulz>Episodes</a><a href="/start/" data-astro-cid-hkbrpulz>Get started</a><a href="/about/" data-astro-cid-hkbrpulz>About</a><a href="https://www.youtube.com/@adrian-m-nenu" data-astro-cid-hkbrpulz>YouTube</a><a href="https://github.com/nenuadrian/nanoMMO" data-astro-cid-hkbrpulz>Code</a><a href="https://nenuadrian.github.io/nanoMMO/" data-astro-cid-hkbrpulz>Docs</a><a href="https://github.com/nenuadrian/nanoMMO/tree/main/docs/decisions" data-astro-cid-hkbrpulz>Decisions</a></nav></div></header><header class="hero field" style="--field: url(/field/compared-ryzom-core.svg)" data-seed="0" data-calm="left" data-astro-cid-7sree6uj><div class="wrap" data-astro-cid-7sree6uj><ul class="tags" data-astro-cid-7sree6uj><li data-astro-cid-7sree6uj>14 min</li></ul><h1 data-astro-cid-7sree6uj>MMO server architecture in Ryzom Core and nanoMMO | nanoMMO Devlog</h1><p class="hand" data-astro-cid-7sree6uj>Ryzom Core&#39;s code next to ours, from the tick to saving a character, and the constraints behind each choice.</p><p class="watch" data-astro-cid-7sree6uj><a href="https://www.youtube.com/watch?v=Mww51XfTd5c" data-astro-cid-7sree6uj>Watch on YouTube</a></p></div></header><div class="wrap layout" data-astro-cid-kpaidhwy><main data-astro-cid-kpaidhwy><div class="player" data-player="Mww51XfTd5c" data-title="MMO server architecture in Ryzom Core and nanoMMO | nanoMMO Devlog" data-astro-cid-g2mknjow><div class="screen" data-astro-cid-g2mknjow><div class="frame" data-astro-cid-g2mknjow><button type="button" class="start" aria-label="Play MMO server architecture in Ryzom Core and nanoMMO | nanoMMO Devlog" data-astro-cid-g2mknjow><img src="/thumbs/compared-ryzom-core.116ec9cf08.webp" class="astro-g2mknjow" alt="" width="1280" height="720" data-astro-cid-g2mknjow><svg class="play" viewBox="0 0 22 16" aria-hidden="true" shape-rendering="crispEdges"><rect width="22" height="16" fill="currentColor"></rect><path d="M8 4h2v8h-2zM10 5h2v6h-2zM12 6h2v4h-2zM14 7h2v2h-2z" fill="var(--on-ember)"></path></svg></button></div><button type="button" class="close" aria-label="Close the mini player" data-astro-cid-g2mknjow><svg viewBox="0 0 8 8" aria-hidden="true" shape-rendering="crispEdges"><path d="M1 1h1v1h-1zM2 2h1v1h-1zM3 3h2v2h-2zM5 2h1v1h-1zM6 1h1v1h-1zM2 5h1v1h-1zM1 6h1v1h-1zM5 5h1v1h-1zM6 6h1v1h-1z"></path></svg></button></div></div><script type="module">var e=`https://www.youtube-nocookie.com`,t=document.querySelector(`[data-player]`),n=t?.querySelector(`.screen`),r=t?.querySelector(`.frame`);if(t&&n&&r){let i=document.querySelector(`[data-mini-slot]`),a=(t,n,r=[])=>t.contentWindow?.postMessage(JSON.stringify({event:`command`,func:n,args:r}),e),o=!0,s=!1,c=!1,l=``,u=()=>{if(!s)return;let e=i?.getClientRects().length?i.getBoundingClientRect():null,t=e?`${e.left},${e.top},${e.width},${e.height}`:`corner`;t!==l&&(l=t,n.classList.toggle(`corner`,!e),e?Object.assign(n.style,{left:`${e.left}px`,top:`${e.top}px`,width:`${e.width}px`,height:`${e.height}px`}):n.removeAttribute(`style`)),requestAnimationFrame(u)},d=e=>{s=e,l=``,document.documentElement.classList.toggle(`mini-docked`,e),t.classList.toggle(`away`,e),n.classList.toggle(`docked`,e),e?requestAnimationFrame(u):(n.classList.remove(`corner`),n.removeAttribute(`style`))},f=()=>{let e=!o&&!c;e!==s&&d(e)},p=n=>{let i=r.querySelector(`iframe`);if(i){a(i,`seekTo`,[n,!0]),a(i,`playVideo`);return}let o=document.createElement(`iframe`),s=new URLSearchParams({autoplay:`1`,enablejsapi:`1`,rel:`0`,start:String(Math.floor(n))});o.src=`${e}/embed/${t.dataset.player}?${s}`,o.title=t.dataset.title??``,o.allow=`autoplay; encrypted-media; picture-in-picture; fullscreen`,o.allowFullscreen=!0,r.replaceChildren(o)};t.dataset.follow!==`no`&&new IntersectionObserver(([e])=>{o=e.intersectionRatio>=.5||e.boundingClientRect.top>0,o&&(c=!1),f()},{threshold:[0,.5,1]}).observe(t),t.querySelector(`.start`)?.addEventListener(`click`,()=>p(0)),n.querySelector(`.close`)?.addEventListener(`click`,()=>{let e=r.querySelector(`iframe`);e&&a(e,`pauseVideo`),c=!0,f()}),document.addEventListener(`click`,e=>{let t=e.target.closest(`a[data-seek]`);!t||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||(e.preventDefault(),c=!1,p(Number(t.dataset.seek)),f())})}</script><p class="description" data-astro-cid-kpaidhwy>A video that&#39;s a bit different: instead of adding to nanoMMO, we read Ryzom Core&#39;s code next to ours. Ryzom launched in 2004 and has been open source since 2010, and its servers split each world over about ten kinds of process, where ours runs a world in one. We go through the tick and the mirror service, who sees whom and the frontend&#39;s bandwidth budget, who decides where a player is, saving a character and what happens when a save fails, content as data and behaviour as script, and the ideas I&#39;d take from them. Not a review: each project made its choices for its own reasons. Ryzom Core is AGPLv3 code with CC BY-SA 3.0 art, by Nevrax, Winch Gate and the Ryzom Core community; its screenshots here are from wiki.ryzom.dev.</p><section aria-labelledby="transcript" data-astro-cid-kpaidhwy><details class="transcript" open data-astro-cid-kpaidhwy><summary data-astro-cid-kpaidhwy><h2 class="section-title" id="transcript" data-astro-cid-kpaidhwy>Transcript</h2></summary><h3 data-astro-cid-kpaidhwy>Intro</h3><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c" data-seek="0" data-astro-cid-kpaidhwy>0:00</a> Our game runs a world in a single process, while Ryzom, which launched in 2004, splits each of its worlds over about ten kinds of process. Today we&#39;re going to read their code next to ours, and see what led their team to each of those choices.</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=16s" data-seek="16" data-astro-cid-kpaidhwy>0:16</a> Hello and welcome to a video that&#39;s a bit different, where we read Ryzom Core&#39;s code next to ours, instead of adding to our game. For my own benefit, I wanted to see how a studio that shipped an MMO answered the questions we&#39;ve been answering for a hundred episodes. A disclaimer before we start, this isn&#39;t a review, and I want to understand each project&#39;s reasons for its choices, not score them.</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=38s" data-seek="38" data-astro-cid-kpaidhwy>0:38</a> The game&#39;s website has more about the project, and a link to its code on GitHub, where it&#39;s all open source. Each episode gets a page there, and Ryzom&#39;s code is open source too, which is what makes a video like this possible.</p><h3 data-astro-cid-kpaidhwy>Where Ryzom comes from</h3><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=52s" data-seek="52" data-astro-cid-kpaidhwy>0:52</a> Ryzom Core is the open source version of Ryzom, on GitHub, with its code under the AGPL and its art under Creative Commons. It&#39;s still very much alive, with five commits on the day I pinned the version we&#39;re reading. And Ryzom Forge develops the live game on a fork of it, on GitLab.</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=71s" data-seek="71" data-astro-cid-kpaidhwy>1:11</a> The story starts in 2000, when a French studio called Nevrax began making Ryzom in Paris, on a 3D and network engine of its own, called NeL. It launched in September 2004 as The Saga of Ryzom, an MMO set on a planet called Atys. Two years later, in 2006, the studio went into receivership. Players and the Free Software Foundation pledged money to buy the game and free its code, which didn&#39;t work out at the time. It passed through a couple of owners, and in 2008 a company called Winch Gate bought it. In May 2010, Winch Gate released the client, the server and the tools as open source, along with over twenty thousand textures and thousands of 3D models under Creative Commons. And the game still runs today, with a patch in November 2026. Their wiki has this screenshot of the Ryzom Core client, out in the Burning Desert. I think it&#39;s quite remarkable for a game to outlive its studio by twenty years and still get patches.</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=129s" data-seek="129" data-astro-cid-kpaidhwy>2:09</a> I was glad to find Nevrax&#39;s research dossiers from 2001 and 2002 on their wiki, translated from French, along with the constraints they designed for. Their servers were meant to be PCs running Linux, with two processors at 2 gigahertz, linked to each other at a hundred megabits a second. And one server had to run at least seventy-five thousand creatures with some intelligence in real time, up from ten thousand in an earlier plan. Keep these numbers in mind, as most of what we see today follows from them.</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=159s" data-seek="159" data-astro-cid-kpaidhwy>2:39</a> Their code is about 2.7 million lines of C++, some forty-four times our sixty-three thousand. A lot of that is because in 2001 there was little to pull in. They wrote their own network layers, service discovery, shared memory between processes, a save format, a schema system for game data, an AI script language, a 3D engine and a GUI toolkit. For those jobs, we use Asio, Consul, Redis, MySQL, protobuf, raylib and Dear ImGui, most of which came out years later.</p><h3 data-astro-cid-kpaidhwy>A world in ten processes</h3><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=192s" data-seek="192" data-astro-cid-kpaidhwy>3:12</a> Now, let&#39;s look at the architecture, and their wiki has a page that lists each service. A world in Ryzom is called a shard, and a shard runs about ten kinds of process, cut up by job. The entities game service holds the players and the rules, and the global position manager keeps track of where everything is and who sees whom. And the AI service runs the creatures and the NPCs, split by continent on a big shard. Around them, a tick service keeps time, a mirror service shares data between them and a frontend talks to the clients. Others handle chat and the registry, while logins and saves are services shared by all the shards.</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=230s" data-seek="230" data-astro-cid-kpaidhwy>3:50</a> Drawn side by side, our world is one process with the login server, Redis and the saver around it, and a second world is another copy of that process. A Ryzom shard splits one world by job, with the pieces sharing data through the mirror, and the AI split again by continent, eight AI processes on a big shard.</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=248s" data-seek="248" data-astro-cid-kpaidhwy>4:08</a> That dossier also says why they split a shard by job. Most online games of the time gave each server a fixed part of the world, which falls over when lots of players crowd into one place. And on those servers, players in different zones couldn&#39;t talk to each other. Splitting by job let one shard spread over several machines, and this screenshot of their admin tool from 2007 shows a shard&#39;s services over four of them. A page on their wiki from 2012 says that a shard that ran on eight servers in 2004 could run on a single server by then. And a world on one core is where our game starts from.</p><h3 data-astro-cid-kpaidhwy>The tick</h3><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=286s" data-seek="286" data-astro-cid-kpaidhwy>4:46</a> Let&#39;s start with time, and with the tick that keeps it. Our tick is one function on an Asio timer, twenty times a second, and it does a whole round in order. It applies the players&#39; inputs, steps the world, saves and sends, and then sets the timer for the next one. In Ryzom, time is a whole process, the tick service, written by Stephane Coutelas at Nevrax, which ticks ten times a second. It counts the game cycle, sends a tick message to each service that registered with it, and marks that it&#39;s waiting for that service&#39;s answer, which they call a tock.</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=321s" data-seek="321" data-astro-cid-kpaidhwy>5:21</a> The tick service sends the next tick once each service has answered, or hasn&#39;t missed more tocks than it&#39;s allowed. That means the slowest service sets the pace for the whole shard. One of my favourite bits of their code is this ASCII diagram at the top of the mirror service, drawn by hand in a comment. Each machine runs a mirror service, which passes the tick on to the services on that machine, and waits for their tocks. It sends what changed to the mirror services on the other machines, and writes what came back into shared memory, where the services read each entity&#39;s position and hit points.</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=355s" data-seek="355" data-astro-cid-kpaidhwy>5:55</a> Our world needs none of this, as the acceptor, the datagrams and the tick are all handlers on one Asio context, and nothing else touches the world. In Ryzom, the split has a cost, which a warning under that diagram spells out. A value in shared memory can change between two reads, as another process on the machine may write it. I think our world gets away without locks because we haven&#39;t split it, and the day we split one, we&#39;ll want something like their mirror.</p><h3 data-astro-cid-kpaidhwy>What each player is sent</h3><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=381s" data-seek="381" data-astro-cid-kpaidhwy>6:21</a> Next, who sees whom, which decides what each client gets. We cut the land into cells of thirty-two metres, and a player gets everyone in the five by five block of cells around theirs, at least sixty-four metres each way. Ryzom&#39;s position manager uses cells of sixteen metres, out to a circle of two hundred and fifty metres, sorted nearest first, with a mask that thins out the far rings. A player sees two hundred and fifty-five others at most.</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=406s" data-seek="406" data-astro-cid-kpaidhwy>6:46</a> At each tick, we send a player all the pieces in that block that changed, however many datagrams that comes to. Ryzom&#39;s frontend works to a budget instead, three hundred and thirty-two bytes a tick for each client. It raises the priority of the things a player can see at each tick, by ten thousand divided by their distance in millimetres. Then it fills the client&#39;s datagram in order of priority until the budget runs out, and what got sent goes back to zero. That means things near you update nearly each tick, and things far away go once they&#39;ve waited long enough. Olivier Cado wrote this part of the frontend at Nevrax in 2002, and I really like it. It&#39;s a line of maths and a byte budget, and a crowd makes the far things slower without flooding anyone&#39;s link. With players on modems back then, they needed it, and I think it holds up very well today.</p><h3 data-astro-cid-kpaidhwy>Where a player is</h3><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=458s" data-seek="458" data-astro-cid-kpaidhwy>7:38</a> Our client sends a direction and no position, and the server walks the player. It scales a direction longer than one back down, which means a modified client can&#39;t ask for more speed. The client predicts its own movement and the server corrects it, as we built in the netcode episodes. Ryzom&#39;s client does the walking, with collision on the client, and sends the server its position in millimetres each tick.</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=483s" data-seek="483" data-astro-cid-kpaidhwy>8:03</a> The position manager then works out how far the player could have gone since the last update, at one and a half times their speed. When the client claims a longer move, it gets cut down to that length. It also plays the move against the world as it was at the client&#39;s tick, from thirty-one images of the past it keeps. This gave players instant movement on the connections of the time, without a line of prediction code on the client. We went the other way, and pay for it with prediction and corrections on our client, as the server decides where each player is.</p><h3 data-astro-cid-kpaidhwy>Saving a character</h3><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=516s" data-seek="516" data-astro-cid-kpaidhwy>8:36</a> Saving is where we differ most, and where I learned the most. After each tick, we write each player who changed into Redis, in one round trip, and our saver takes them to MySQL in batches, five seconds apart. Ryzom serialises the whole character into one tagged file, and sends it to a backup service that writes it to disk. It saves a character once eight minutes of play have passed since the last save, and again when the player logs out. A file per character kept a database out of the game&#39;s way, and its tagged fields let old saves load into new code.</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=548s" data-seek="548" data-astro-cid-kpaidhwy>9:08</a> I was most curious about what each game does when a save fails. When our saver can&#39;t write, it logs the error and carries on, the players wait in Redis, and an alert tells us when it&#39;s been too long since the last good flush. When Ryzom&#39;s backup service can&#39;t write a file, the shard stalls. Players get a message that Customer Support is already working on it, and the tick service is told to halt. I think both answers make sense, given where each game keeps a character. Their file is the one copy of a character, and playing on would pile up progress that a crash then loses. Ours has Redis&#39;s append-only file behind the tick, which is why we keep the game up.</p><h3 data-astro-cid-kpaidhwy>What we share</h3><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=587s" data-seek="587" data-astro-cid-kpaidhwy>9:47</a> Now for some of the answers we share, starting with game data. Our monsters are data, one block each in a protobuf text file with a schema beside it, which the world server and the bots read. Ryzom&#39;s are Georges sheets, XML forms checked against a schema, where a creature inherits from parent sheets, here a desert kazoar&#39;s, with how far it notices players depending on how hungry it is. They have over two thousand fauna sheets and an editor for designers, where we have four monster kinds in one file. Still, in both, a monster&#39;s numbers sit in a data file with a schema, and you can change one without touching the code.</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=623s" data-seek="623" data-astro-cid-kpaidhwy>10:23</a> In both games, logging in ends with a one-time ticket that the login side hands to the game. Our login server hands the world a random token in Redis, which works once within thirty seconds. In Ryzom, the frontend gets a cookie, made of the client&#39;s address, a random key and the account&#39;s id, and it accepts the cookie once and removes it. Either way, the game server doesn&#39;t see a password, as the login side checks it and hands over a ticket instead.</p><h3 data-astro-cid-kpaidhwy>Behaviour</h3><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=650s" data-seek="650" data-astro-cid-kpaidhwy>10:50</a> We part ways again on behaviour, which Ryzom keeps in scripts. Their level designers attach scripts to groups of NPCs and creatures, in an AI language of their own that the AI service compiles and runs. With the Ring editor, even players could build scenarios, which become that script too. Our monsters&#39; behaviour is C++ in the server, next to the rules it uses, and the content files hold numbers. A big world built by a team of designers couldn&#39;t wait for a programmer and a server build, while we have four monster kinds and one person writing code.</p><h3 data-astro-cid-kpaidhwy>What I&#39;d take from them</h3><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=684s" data-seek="684" data-astro-cid-kpaidhwy>11:24</a> Before we wrap up, here are a few of their ideas I&#39;d happily take for our game. Their AI service updates a group of creatures on alternate ticks when players are near, and once in thirty-two ticks when nobody is around, staggered by its place in the list. I love that whoever wrote it noted it was late and they were tired, which I can very much relate to. Our monsters all step each tick, and I&#39;d like to try this in ours, with the monsters far from players stepping less often.</p><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=713s" data-seek="713" data-astro-cid-kpaidhwy>11:53</a> The frontend&#39;s priority under a budget is the one I&#39;d copy first, the day bandwidth matters for us. NeL also has a message recorder from 2001, by Olivier Cado, which records what a service receives and replays it under a debugger. And I&#39;d love something like it for bug reports, to replay what a server got from a player. Each of their services also has variables and commands you can change while it runs, from their admin tool. It&#39;s also nice to see how much we agree on, from the one-time ticket between login and game to content as data. And in both, a process runs its game logic on one thread, one update after another.</p><h3 data-astro-cid-kpaidhwy>Recap</h3><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=753s" data-seek="753" data-astro-cid-kpaidhwy>12:33</a> Ryzom split each world by job to spread it over several of the two-processor PCs of its day. And with little to pull in, its team wrote nearly everything themselves, from the network layers to the 3D engine. We fit a world on one core and lean on libraries that came later. With their constraints, I think I&#39;d have made a lot of their choices too. Funnily enough, they&#39;re heading to the browser like us, with their engine&#39;s samples running in WebGL since February.</p><h3 data-astro-cid-kpaidhwy>Playing it</h3><p data-astro-cid-kpaidhwy><a class="time" href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=832s" data-seek="832" data-astro-cid-kpaidhwy>13:52</a> Have you played Ryzom, or worked on a codebase this old? Tell me in the comments, along with what you think of reading other projects&#39; code like this, and subscribe if you&#39;d like to follow along. I hope you find this useful, and thanks for watching.</p></details></section></main><aside aria-labelledby="chapters" data-astro-cid-kpaidhwy><div class="mini-slot" data-mini-slot data-astro-cid-kpaidhwy></div><h2 class="section-title" id="chapters" data-astro-cid-kpaidhwy>Chapters</h2><ol class="chapters" data-astro-cid-kpaidhwy><li data-astro-cid-kpaidhwy><a href="https://www.youtube.com/watch?v=Mww51XfTd5c" data-seek="0" class="astro-kpaidhwy" data-astro-cid-kpaidhwy><span class="time" data-astro-cid-kpaidhwy>0:00</span><span data-astro-cid-kpaidhwy>Intro</span></a></li><li data-astro-cid-kpaidhwy><a href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=51s" data-seek="51" class="astro-kpaidhwy" data-astro-cid-kpaidhwy><span class="time" data-astro-cid-kpaidhwy>0:51</span><span data-astro-cid-kpaidhwy>Where Ryzom comes from</span></a></li><li data-astro-cid-kpaidhwy><a href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=191s" data-seek="191" class="astro-kpaidhwy" data-astro-cid-kpaidhwy><span class="time" data-astro-cid-kpaidhwy>3:11</span><span data-astro-cid-kpaidhwy>A world in ten processes</span></a></li><li data-astro-cid-kpaidhwy><a href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=286s" data-seek="286" class="astro-kpaidhwy" data-astro-cid-kpaidhwy><span class="time" data-astro-cid-kpaidhwy>4:46</span><span data-astro-cid-kpaidhwy>The tick</span></a></li><li data-astro-cid-kpaidhwy><a href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=380s" data-seek="380" class="astro-kpaidhwy" data-astro-cid-kpaidhwy><span class="time" data-astro-cid-kpaidhwy>6:20</span><span data-astro-cid-kpaidhwy>What each player is sent</span></a></li><li data-astro-cid-kpaidhwy><a href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=457s" data-seek="457" class="astro-kpaidhwy" data-astro-cid-kpaidhwy><span class="time" data-astro-cid-kpaidhwy>7:37</span><span data-astro-cid-kpaidhwy>Where a player is</span></a></li><li data-astro-cid-kpaidhwy><a href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=515s" data-seek="515" class="astro-kpaidhwy" data-astro-cid-kpaidhwy><span class="time" data-astro-cid-kpaidhwy>8:35</span><span data-astro-cid-kpaidhwy>Saving a character</span></a></li><li data-astro-cid-kpaidhwy><a href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=587s" data-seek="587" class="astro-kpaidhwy" data-astro-cid-kpaidhwy><span class="time" data-astro-cid-kpaidhwy>9:47</span><span data-astro-cid-kpaidhwy>What we share</span></a></li><li data-astro-cid-kpaidhwy><a href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=650s" data-seek="650" class="astro-kpaidhwy" data-astro-cid-kpaidhwy><span class="time" data-astro-cid-kpaidhwy>10:50</span><span data-astro-cid-kpaidhwy>Behaviour</span></a></li><li data-astro-cid-kpaidhwy><a href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=684s" data-seek="684" class="astro-kpaidhwy" data-astro-cid-kpaidhwy><span class="time" data-astro-cid-kpaidhwy>11:24</span><span data-astro-cid-kpaidhwy>What I&#39;d take from them</span></a></li><li data-astro-cid-kpaidhwy><a href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=752s" data-seek="752" class="astro-kpaidhwy" data-astro-cid-kpaidhwy><span class="time" data-astro-cid-kpaidhwy>12:32</span><span data-astro-cid-kpaidhwy>Recap</span></a></li><li data-astro-cid-kpaidhwy><a href="https://www.youtube.com/watch?v=Mww51XfTd5c&amp;t=780s" data-seek="780" class="astro-kpaidhwy" data-astro-cid-kpaidhwy><span class="time" data-astro-cid-kpaidhwy>13:00</span><span data-astro-cid-kpaidhwy>Playing it</span></a></li></ol></aside></div><nav class="wrap pager" aria-label="Episodes" data-astro-cid-kpaidhwy><a class="prev" href="/ep097-factions/" data-astro-cid-kpaidhwy><span class="muted" data-astro-cid-kpaidhwy>← Episode 97</span><span data-astro-cid-kpaidhwy>Adding factions to an MMORPG</span></a><a class="next" href="/story-so-far/" data-astro-cid-kpaidhwy><span class="muted" data-astro-cid-kpaidhwy>Next →</span><span data-astro-cid-kpaidhwy>Building an MMO from scratch, 88 episodes in | nanoMMO Devlog</span></a></nav><script type="module" src="/_astro/Base.astro_astro_type_script_index_0_lang.uHA48Xs6.js"></script><footer class="foot" data-astro-cid-hkbrpulz><div class="wrap foot-cols" data-astro-cid-hkbrpulz><div class="foot-about" data-astro-cid-hkbrpulz><a class="brand" href="/" data-astro-cid-hkbrpulz>nanoMMO</a><p data-astro-cid-hkbrpulz>A devlog where I build an MMO from scratch in C++, with the engineering and the hard parts out in the open.</p><a class="subscribe" href="https://www.youtube.com/@adrian-m-nenu?sub_confirmation=1" data-astro-cid-hkbrpulz><svg viewBox="0 0 8 6" aria-hidden="true" shape-rendering="crispEdges" data-astro-cid-hkbrpulz><path d="M1 0h6v1h1v4h-1v1h-6v-1h-1v-4h1zM3 1.5v3l2.5-1.5z" fill-rule="evenodd" data-astro-cid-hkbrpulz></path></svg>Subscribe on YouTube</a></div><nav aria-labelledby="foot-explore" data-astro-cid-hkbrpulz><p class="foot-h" id="foot-explore" data-astro-cid-hkbrpulz>Explore</p><ul data-astro-cid-hkbrpulz><li data-astro-cid-hkbrpulz><a href="/" data-astro-cid-hkbrpulz>Home</a></li><li data-astro-cid-hkbrpulz><a href="/episodes/" data-astro-cid-hkbrpulz>Episodes</a></li><li data-astro-cid-hkbrpulz><a href="/start/" data-astro-cid-hkbrpulz>Get started</a></li><li data-astro-cid-hkbrpulz><a href="/about/" data-astro-cid-hkbrpulz>About</a></li><li data-astro-cid-hkbrpulz><a href="/rss.xml" data-astro-cid-hkbrpulz>RSS feed</a></li></ul></nav><nav aria-labelledby="foot-links" data-astro-cid-hkbrpulz><p class="foot-h" id="foot-links" data-astro-cid-hkbrpulz>Resources</p><ul data-astro-cid-hkbrpulz><li data-astro-cid-hkbrpulz><a href="https://www.youtube.com/@adrian-m-nenu" data-astro-cid-hkbrpulz>YouTube</a></li><li data-astro-cid-hkbrpulz><a href="https://github.com/nenuadrian/nanoMMO" data-astro-cid-hkbrpulz>The game on GitHub</a></li><li data-astro-cid-hkbrpulz><a href="https://nenuadrian.github.io/nanoMMO/" data-astro-cid-hkbrpulz>API docs</a></li><li data-astro-cid-hkbrpulz><a href="https://github.com/nenuadrian/nanoMMO/tree/main/docs/decisions" data-astro-cid-hkbrpulz>Decision records</a></li></ul></nav><nav aria-labelledby="foot-series" data-astro-cid-hkbrpulz><p class="foot-h" id="foot-series" data-astro-cid-hkbrpulz>Series</p><ul data-astro-cid-hkbrpulz><li data-astro-cid-hkbrpulz><a href="/" aria-current="page" class="here" data-astro-cid-hkbrpulz>nanoMMO</a></li><li data-astro-cid-hkbrpulz><a href="https://mvgpt.nenuadrian.com" data-astro-cid-hkbrpulz>mvGPT</a></li><li data-astro-cid-hkbrpulz><a href="https://smollergraph.nenuadrian.com" data-astro-cid-hkbrpulz>smollerGraph</a></li></ul></nav></div></footer></body></html>
