@@ -49,18 +49,21 @@ body {
   filter: drop-shadow(0 2px 0 rgb(0 0 0 / 0.85));
 }
 
-/* Under a title: a line that fades in from its ends, with a diamond in its middle. */
+/* Under a title: a line that fades in from its ends, with a diamond in its middle. The line is a
+   border, as a border keeps at least one pixel at any zoom, where a 1px background can round away
+   (under Architecture at 90%, 2026-11-25). */
 .hud-rule {
   position: relative;
-  height: 1px;
+  height: 0;
   margin: 10px 0 0;
-  background: linear-gradient(90deg, transparent, var(--brass) 20%, var(--gold-dark) 50%, var(--brass) 80%, transparent);
+  border-top: 1px solid transparent;
+  border-image: linear-gradient(90deg, transparent, var(--brass) 20%, var(--gold-dark) 50%, var(--brass) 80%, transparent) 1;
 }
 .hud-rule::after {
   content: '';
   position: absolute;
   left: 50%;
-  top: 50%;
+  top: -0.5px;
   width: 9px;
   height: 9px;
   background: var(--gold);
