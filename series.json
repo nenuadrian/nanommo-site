@@ -4,8 +4,8 @@
   "description": "A devlog where I build an MMO from scratch in C++, with the engineering and the hard parts out in the open.",
   "cover": "https://nanommo.nenuadrian.com/cover.webp?v=1eb3f4a32f",
   "url": "https://nanommo.nenuadrian.com/",
-  "episodes": 87,
-  "hours": 56.4,
+  "episodes": 90,
+  "hours": 59.4,
   "latest": {
     "title": "Adding factions to an MMORPG",
     "url": "https://nanommo.nenuadrian.com/ep097-factions/",
